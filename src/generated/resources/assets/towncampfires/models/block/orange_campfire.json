@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/campfire",
+  "textures": {
+    "fire": "towncampfires:block/orange_campfire_fire"
+  }
+}
