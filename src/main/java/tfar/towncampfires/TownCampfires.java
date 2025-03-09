@@ -6,15 +6,12 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.InterModComms;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModEnqueueEvent;
-import net.minecraftforge.fml.event.lifecycle.InterModProcessEvent;
-import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.registries.RegisterEvent;
@@ -23,11 +20,11 @@ import org.slf4j.Logger;
 import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.datagen.ModDatagen;
 import tfar.towncampfires.init.ModBlocks;
+import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
 
 import java.lang.reflect.Field;
 import java.util.*;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(TownCampfires.MODID)
@@ -43,7 +40,7 @@ public class TownCampfires
 
     public static final String MODID = "towncampfires";
     // Directly reference a slf4j logger
-    private static final Logger LOGGER = LogUtils.getLogger();
+    static final Logger LOGGER = LogUtils.getLogger();
 
     public TownCampfires() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -56,6 +53,11 @@ public class TownCampfires
             TownCampfiresClient.init(bus);
         }
         registerAll(ModBlocks.class,Registry.BLOCK, Block.class);
+        MinecraftForge.EVENT_BUS.addListener(this::start);
+    }
+
+    void start(ServerAboutToStartEvent event) {
+        TownCampfireStructures.setup(event.getServer().registryAccess());
     }
 
       <F> void registerAll(Class<?> clazz, Registry<F> registry, Class<? extends F> filter) {
@@ -71,10 +73,10 @@ public class TownCampfires
                 illegalAccessException.printStackTrace();
             }
         }
-        registerAll(map,registry,filter);
+        registerAll(map,registry);
     }
 
-    public <F> void registerAll(Map<String, ? extends F> map, Registry<F> registry, Class<? extends F> filter) {
+    public <F> void registerAll(Map<String, ? extends F> map, Registry<F> registry) {
         List<Pair<ResourceLocation, Supplier<?>>> list = registerLater.computeIfAbsent(registry, k -> new ArrayList<>());
         for (Map.Entry<String, ? extends F> entry : map.entrySet()) {
             list.add(Pair.of(id(entry.getKey()), entry::getValue));
@@ -83,6 +85,19 @@ public class TownCampfires
 
 
     private void setup(final FMLCommonSetupEvent event) {
+        addBlocks(BlockEntityType.CAMPFIRE,ModBlocks.GRAY_TOWN_CAMPFIRE,ModBlocks.GREEN_TOWN_CAMPFIRE,
+                ModBlocks.RED_TOWN_CAMPFIRE,ModBlocks.ORANGE_TOWN_CAMPFIRE,ModBlocks.LIGHT_BLUE_TOWN_CAMPFIRE);
+    }
+
+    void addBlocks(BlockEntityType<?> type,Block... blocks) {
+        Set<Block> set = ((BlockEntityTypeAccessor)type).getValidBlocks();
+        if (set instanceof HashSet<Block>) {
+
+        } else {
+            set = new HashSet<>(set);
+            ((BlockEntityTypeAccessor)type).setValidBlocks(set);
+        }
+        Collections.addAll(set, blocks);
     }
 
     void register(RegisterEvent event){

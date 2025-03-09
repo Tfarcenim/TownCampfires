@@ -4,8 +4,10 @@
   "compatibilityLevel": "JAVA_16",
   "refmap": "towncampfires.refmap.json",
   "mixins": [
+    "BlockEntityTypeAccessor",
+    "debug.PlacerMixin"
   ],
-  "client":[
+  "client": [
   ],
   "injectors": {
     "defaultRequire": 1
