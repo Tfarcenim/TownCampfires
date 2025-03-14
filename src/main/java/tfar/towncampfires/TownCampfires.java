@@ -5,10 +5,14 @@ import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -19,6 +23,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.datagen.ModDatagen;
+import tfar.towncampfires.init.ModBlockEntities;
 import tfar.towncampfires.init.ModBlocks;
 import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
 
@@ -42,6 +47,7 @@ public class TownCampfires
     // Directly reference a slf4j logger
     static final Logger LOGGER = LogUtils.getLogger();
 
+
     public TownCampfires() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         // Register the setup method for modloading
@@ -53,11 +59,20 @@ public class TownCampfires
             TownCampfiresClient.init(bus);
         }
         registerAll(ModBlocks.class,Registry.BLOCK, Block.class);
-        MinecraftForge.EVENT_BUS.addListener(this::start);
+        registerAll(ModBlockEntities.class,Registry.BLOCK_ENTITY_TYPE,(Class<BlockEntityType<?>>)(Object)BlockEntityType.class);
+       // MinecraftForge.EVENT_BUS.addListener(this::started);
+        MinecraftForge.EVENT_BUS.addListener(this::commands);
+    }
+
+    void commands(RegisterCommandsEvent event) {
+        ModCommands.register(event.getDispatcher());
     }
 
     void start(ServerAboutToStartEvent event) {
-        TownCampfireStructures.setup(event.getServer().registryAccess());
+    }
+
+
+    void reload(ServerAboutToStartEvent event) {
     }
 
       <F> void registerAll(Class<?> clazz, Registry<F> registry, Class<? extends F> filter) {
@@ -85,8 +100,7 @@ public class TownCampfires
 
 
     private void setup(final FMLCommonSetupEvent event) {
-        addBlocks(BlockEntityType.CAMPFIRE,ModBlocks.GRAY_TOWN_CAMPFIRE,ModBlocks.GREEN_TOWN_CAMPFIRE,
-                ModBlocks.RED_TOWN_CAMPFIRE,ModBlocks.ORANGE_TOWN_CAMPFIRE,ModBlocks.LIGHT_BLUE_TOWN_CAMPFIRE);
+
     }
 
     void addBlocks(BlockEntityType<?> type,Block... blocks) {

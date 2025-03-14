@@ -10,5 +10,6 @@ public class ModDatagen {
         ExistingFileHelper helper = event.getExistingFileHelper();
         boolean client = event.includeClient();
         generator.addProvider(client,new ModBlockstateProvider(generator,helper));
+        generator.addProvider(client,new ModLangProvider(generator));
     }
 }

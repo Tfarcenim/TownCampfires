@@ -88,7 +88,7 @@ public class DebugMethods {
                     list.addAll(optional1.get().getShuffledTemplates(random));
 
                     if (optional.get() == HOUSES) {
-                      //  System.out.println("Probably houses");
+                        int i = 0;
                     }
 
                     for(StructurePoolElement structurepoolelement1 : list) {
