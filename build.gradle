@@ -157,7 +157,8 @@ repositories {
     }
 
     maven {
-        url 'https://maven.blamejared.com'
+        name = "BookShelf and GameStages"
+        url = 'https://maven.blamejared.com'
     }
 }
     // Put repositories for dependencies here
@@ -182,8 +183,12 @@ dependencies {
     // Examples using mod jars from ./libs
     // implementation fg.deobf("blank:coolmod-${mc_version}:${coolmod_version}")
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
     implementation fg.deobf("curse.maven:waystones-245755:4943265")
+    implementation fg.deobf("curse.maven:balm-531761:4751735")
+
     implementation fg.deobf("net.darkhax.gamestages:GameStages-Forge-${mc_version}:${gamestages_version}")
+    implementation fg.deobf("net.darkhax.bookshelf:Bookshelf-Forge-${mc_version}:${bookshelf_version}")
     // For more info...
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
