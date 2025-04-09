@@ -5,14 +5,11 @@ import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -26,6 +23,7 @@ import tfar.towncampfires.datagen.ModDatagen;
 import tfar.towncampfires.init.ModBlockEntities;
 import tfar.towncampfires.init.ModBlocks;
 import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
+import tfar.towncampfires.network.PacketHandler;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -100,7 +98,7 @@ public class TownCampfires
 
 
     private void setup(final FMLCommonSetupEvent event) {
-
+        PacketHandler.registerPackets();
     }
 
     void addBlocks(BlockEntityType<?> type,Block... blocks) {
