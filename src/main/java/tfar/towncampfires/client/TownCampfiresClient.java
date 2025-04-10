@@ -1,12 +1,14 @@
 package tfar.towncampfires.client;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.init.ModBlocks;
 
 public class TownCampfiresClient {
@@ -26,5 +28,12 @@ public class TownCampfiresClient {
 
     public static void openCampfireScreen(Player pPlayer) {
         Minecraft.getInstance().setScreen(new TownCampfireScreen(Component.empty()));
+    }
+
+    public static void handleSync(TownCampfire townCampfire) {
+        Screen screen = Minecraft.getInstance().screen;
+        if (screen instanceof TownCampfireScreen townCampfireScreen) {
+            townCampfireScreen.setCampfire(townCampfire);
+        }
     }
 }

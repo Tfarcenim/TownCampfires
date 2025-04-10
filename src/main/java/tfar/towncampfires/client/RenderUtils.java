@@ -79,11 +79,11 @@ public class RenderUtils {
      * @param pSourceWidth the width of the source texture.
      * @param pSourceHeight the height of the source texture.
      */
-    public static void blitRepeating(PoseStack matrices, int pX, int pY, int pWidth, int pHeight, int pUOffset, int pVOffset, int pSourceWidth, int pSourceHeight) {
+    public static void blitRepeating(PoseStack matrices, int pX, int pY, int pWidth, int pHeight, float pUOffset,float pVOffset, int pSourceWidth, int pSourceHeight) {
         blitRepeating(matrices, pX, pY, pWidth, pHeight, pUOffset, pVOffset, pSourceWidth, pSourceHeight, 256, 256);
     }
 
-    public static void blitRepeating(PoseStack matrices, int pX, int pY, int pWidth, int pHeight, int pUOffset, int pVOffset, int pSourceWidth, int pSourceHeight, int textureWidth, int textureHeight) {
+    public static void blitRepeating(PoseStack matrices, int pX, int pY, int pWidth, int pHeight, float pUOffset, float pVOffset, int pSourceWidth, int pSourceHeight, int textureWidth, int textureHeight) {
         int i = pX;
 
         int j;

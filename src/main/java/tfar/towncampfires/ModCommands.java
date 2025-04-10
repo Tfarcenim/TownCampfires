@@ -25,11 +25,11 @@ public class ModCommands {
         MinecraftServer server = source.getServer();
         CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(server.overworld());//todo other worlds?
 
-        List<CampfireInfo> campfiresByIndex = campfireLevelData.getCampfiresByIndex();
+        List<TownCampfire> campfiresByIndex = campfireLevelData.getCampfiresByIndex();
 
         for (int i = 0; i < campfiresByIndex.size();i++) {
-            CampfireInfo campfireInfo = campfiresByIndex.get(i);
-            MutableComponent component = Component.literal("Campfire "+i+": "+campfireInfo.location());
+            TownCampfire townCampfire = campfiresByIndex.get(i);
+            MutableComponent component = Component.literal("Campfire "+i+": "+ townCampfire.location());
             source.sendSuccess(component,false);
         }
         return 1;

@@ -1,6 +1,9 @@
 package tfar.towncampfires;
 
+import net.darkhax.bookshelf.api.Services;
 import net.minecraft.core.BlockPos;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
@@ -15,6 +18,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.init.ModBlockEntities;
+import tfar.towncampfires.network.ForgePacketHandler;
+import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 
 import javax.annotation.Nullable;
 
@@ -39,6 +44,9 @@ public class TownCampfireBlock extends CampfireBlock {
         if (itemstack.isEmpty()) {
             if (pLevel.isClientSide) {
                 TownCampfiresClient.openCampfireScreen(pPlayer);
+            } else {
+                CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate((ServerLevel) pLevel);
+                ForgePacketHandler.sendToClient(new S2CTownCampfirePacket(campfireLevelData.byLocation(pPos)), (ServerPlayer) pPlayer);
             }
             return InteractionResult.SUCCESS;
         }else {

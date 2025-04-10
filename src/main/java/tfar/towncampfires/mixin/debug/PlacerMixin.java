@@ -42,14 +42,14 @@ public class PlacerMixin {
 
     @ModifyArg(method = "tryPlacingChildren(Lnet/minecraft/world/level/levelgen/structure/PoolElementStructurePiece;Lorg/apache/commons/lang3/mutable/MutableObject;IZLnet/minecraft/world/level/LevelHeightAccessor;Lnet/minecraft/world/level/levelgen/RandomState;)V",
             at = @At(value = "INVOKE", target = "Lnet/minecraft/core/Registry;getOptional(Lnet/minecraft/resources/ResourceLocation;)Ljava/util/Optional;"))
-    private ResourceLocation forceWaystonePool(ResourceLocation resourceKey) {
+    private ResourceLocation forcTeownCampfirePool(ResourceLocation resourceKey) {
         if (hasWaystone) {
             return resourceKey;
         }
 
         String poolPath = resourceKey.getPath();
 
-        ResourceLocation alt = Hooks.forceWaystonePool(pools,poolPath);
+        ResourceLocation alt = Hooks.forceTownCampfirePool(pools,poolPath);
 
         if (alt != null){
             hasWaystone = true;
