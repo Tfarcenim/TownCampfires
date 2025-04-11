@@ -11,6 +11,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraftforge.common.data.LanguageProvider;
 import org.codehaus.plexus.util.StringUtils;
 import tfar.towncampfires.TownCampfires;
+import tfar.towncampfires.init.ModItems;
 
 import java.util.function.Supplier;
 
@@ -21,7 +22,7 @@ public class ModLangProvider extends LanguageProvider {
 
     @Override
     protected void addTranslations() {
-
+        addDefaultItem(() -> ModItems.TOWN_CAMPFIRE_EXPERIENCE);
     }
 
     protected void addDefaultItem(Supplier<? extends Item> supplier) {

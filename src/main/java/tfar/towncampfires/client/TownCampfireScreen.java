@@ -15,6 +15,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
 import tfar.towncampfires.TownCampfire;
+import tfar.towncampfires.TownCampfireConfig;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
@@ -26,9 +27,9 @@ public class TownCampfireScreen extends Screen {
     protected EditBox name;
 
     /** The X size of the inventory window in pixels. */
-    protected int imageWidth = 230;
+    protected int imageWidth = 320;
     /** The Y size of the inventory window in pixels. */
-    protected int imageHeight = 166;
+    protected int imageHeight = 230;
     /** Starting X position for the Gui. Inconsistent use for Gui backgrounds. */
     protected int leftPos;
     /** Starting Y position for the Gui. Inconsistent use for Gui backgrounds. */
@@ -108,6 +109,62 @@ public class TownCampfireScreen extends Screen {
         if (isEditboxActive()) {
             this.name.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
         }
+
+        if (townCampfire == null)return;
+        switch (current) {
+            case status -> {
+                int y = 20;
+                int h = 15;
+                font.draw(pPoseStack,Component.literal("Villagers: "+townCampfire.getEffectiveVillagers()+"/"+townCampfire.getMaxVillagers()),
+                        leftPos+8,topPos+TAB_HEIGHT+y,0x404040);
+                font.draw(pPoseStack,Component.literal("Blocks Allowed: "+townCampfire.getUsedBlocks()+"/"+townCampfire.getAllowedBlocks()),
+                        leftPos+8,topPos+TAB_HEIGHT+y + h,0x404040);
+
+                font.draw(pPoseStack,Component.literal("Work Bench Limit: "+townCampfire.getUsedWorkbenches()+"/"+townCampfire.getAllowedWorkbenches()),
+                        leftPos+8,topPos+TAB_HEIGHT+y + h*2,0x404040);
+
+                font.draw(pPoseStack,Component.literal("Quests Available: "+"TODO"+"/"+"TODO"),
+                        leftPos+8,topPos+TAB_HEIGHT+y + h*3,0x404040);
+
+                font.draw(pPoseStack,Component.literal("Refresh: "+TownCampfire.timeUntilRefresh(minecraft.level.getGameTime())),
+                        leftPos+8,topPos+TAB_HEIGHT+y + h*4,0x404040);
+
+                font.draw(pPoseStack,Component.literal("Raid Chance: "+"TODO"),
+                        leftPos+8,topPos+TAB_HEIGHT+y + h*5,0x404040);
+                renderExperience(pPoseStack, pMouseX, pMouseY, pPartialTick);
+
+                font.draw(pPoseStack,Component.literal("Local Effects"),
+                        leftPos+imageWidth/2f + 32,topPos+TAB_HEIGHT+y,0x404040);
+            }
+        }
+    }
+
+    void renderExperience(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+        RenderSystem.setShaderTexture(0, GuiComponent.GUI_ICONS_LOCATION);
+        int xPos = leftPos + imageWidth/ 2 - 91;
+        int yPos = topPos + imageHeight - 22;
+        int j = 182;
+        long experience = townCampfire.getExperience();
+        int experiencePerLevel = TownCampfireConfig.CONFIG.experience_per_level.get();
+
+        float scale = (((float)experience % experiencePerLevel) / experiencePerLevel) * 183f;
+
+        this.blit(pPoseStack, xPos, yPos, 0, 64, j, 5);
+        if (scale > 0) {
+            this.blit(pPoseStack, xPos, yPos, 0, 69, (int)scale, 5);
+        }
+
+        String level = "Level: "+townCampfire.getLevel();
+
+        font.draw(pPoseStack,Component.literal(level),
+                leftPos+ imageWidth/2f - font.width(level)/2f,yPos- 15,0x404040);
+
+        String progress = (experience%experiencePerLevel)+"/"+experiencePerLevel;
+
+        font.draw(pPoseStack,Component.literal(progress),
+                leftPos+ imageWidth/2f - font.width(progress)/2f,yPos+ 10,0x404040);
+
     }
 
     boolean isEditboxActive() {

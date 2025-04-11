@@ -1,14 +1,25 @@
 package tfar.towncampfires;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.ai.village.poi.PoiManager;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.RegisterCommandsEvent;
+import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModLoadingContext;
@@ -22,8 +33,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.datagen.ModDatagen;
-import tfar.towncampfires.init.ModBlockEntities;
-import tfar.towncampfires.init.ModBlocks;
+import tfar.towncampfires.init.*;
 import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
 import tfar.towncampfires.network.PacketHandler;
 
@@ -60,9 +70,75 @@ public class TownCampfires
             TownCampfiresClient.init(bus);
         }
         registerAll(ModBlocks.class,Registry.BLOCK, Block.class);
+        registerAll(ModItems.class,Registry.ITEM, Item.class);
         registerAll(ModBlockEntities.class,Registry.BLOCK_ENTITY_TYPE,(Class<BlockEntityType<?>>)(Object)BlockEntityType.class);
        // MinecraftForge.EVENT_BUS.addListener(this::started);
         MinecraftForge.EVENT_BUS.addListener(this::commands);
+        MinecraftForge.EVENT_BUS.addListener(this::useItem);
+        MinecraftForge.EVENT_BUS.addListener(this::levelTick);
+    }
+
+    void levelTick(TickEvent.LevelTickEvent event) {
+        if (event.phase == TickEvent.Phase.START) {
+            ServerLevel level = (ServerLevel) event.level;
+            CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(level);
+            campfireLevelData.tick();
+        }
+    }
+
+    void useItem(PlayerInteractEvent.RightClickBlock event){
+        ItemStack stack = event.getItemStack();
+        if (stack.isEmpty()) return;//allow empty hand interaction
+        Player player = event.getEntity();
+        BlockPos pos = event.getPos();
+        Level level = event.getLevel();
+        BlockState state = level.getBlockState(pos);
+        if (state.getBlock() instanceof TownCampfireBlock) {
+            return;
+        }
+        if (!level.isClientSide) {
+            ServerLevel serverLevel = (ServerLevel) event.getLevel();
+            Optional<BlockPos> optional = findTownCampfire(serverLevel, pos, TownCampfireConfig.CONFIG.radius.get());
+            if (optional.isPresent()) {
+                if (!stack.is(ModTags.USABLE_WITHIN_CAMPFIRE_RANGE)) {
+                    event.setCanceled(true);
+                    return;
+                }
+
+                boolean isWorkbench = stack.is(ModTags.WORKBENCHES);
+
+                BlockPos campPos = optional.get();
+                BlockEntity be = serverLevel.getBlockEntity(campPos);
+                if (be instanceof TownCampfireBlockEntity townBE) {
+                    TownCampfire townCampfire = townBE.townCampfire;
+
+                    if (isWorkbench) {
+                        if (townCampfire.hasFreeWorkbenches()) {
+                            townCampfire.incrementUsedWorkbenches();
+                            CampfireLevelData.getOrCreate(serverLevel).setDirty();
+                        } else {
+                            event.setCanceled(true);
+                        }
+                    } else {
+                        if (townCampfire.hasFreeBlocks()) {
+                            townCampfire.incrementUsedBlocks();
+                            CampfireLevelData.getOrCreate(serverLevel).setDirty();
+                        } else {
+                            event.setCanceled(true);
+                        }
+                    }
+                }
+            } else {
+                if (!stack.is(ModTags.USABLE_OUTSIDE_OF_CAMPFIRE_RANGE)) {
+                    event.setCanceled(true);
+                }
+            }
+        }
+    }
+
+    static Optional<BlockPos> findTownCampfire(ServerLevel serverLevel,BlockPos pPos,int distance) {
+        return serverLevel.getPoiManager().findClosest(holder -> holder.value() == ModPOIs.TOWN_CAMPFIRE, pos -> true,
+                pPos, distance, PoiManager.Occupancy.ANY);
     }
 
     void commands(RegisterCommandsEvent event) {
@@ -123,6 +199,7 @@ public class TownCampfires
                 event.register((ResourceKey<? extends Registry<Object>>)registry.key(),pair.getLeft(),(Supplier<Object>)pair.getValue());
             }
         }
+        event.register(Registry.POINT_OF_INTEREST_TYPE_REGISTRY,id("town_campfire"),()-> ModPOIs.TOWN_CAMPFIRE);
     }
 
     public static ResourceLocation id(String path) {

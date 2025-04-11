@@ -41,7 +41,8 @@ public class CampfireLevelData extends SavedData {
     public void save(TownCampfireBlockEntity be) {
         BlockPos blockPos = be.getBlockPos();
         if (!campfiresByPos.containsKey(blockPos)) {
-            TownCampfire townCampfire = new TownCampfire(blockPos, Util.getRandom(TownCampfireConfig.CONFIG.defaultNames.get(),be.getLevel().random));
+            TownCampfire townCampfire = new TownCampfire(blockPos,
+                    Util.getRandom(TownCampfireConfig.CONFIG.defaultNames.get(),be.getLevel().random),0,0,0);
 
             be.setLinkedCampfire(townCampfire);
 
@@ -82,5 +83,11 @@ public class CampfireLevelData extends SavedData {
         Tag campfiresTag = TownCampfire.CODEC.listOf().encodeStart(NbtOps.INSTANCE,campfiresByIndex).resultOrPartial(TownCampfires.LOGGER::error).orElseThrow();
         pCompoundTag.put("campfires",campfiresTag);
         return pCompoundTag;
+    }
+
+    public void tick() {
+        for (TownCampfire campfire : campfiresByIndex) {
+            campfire.update(level);
+        }
     }
 }

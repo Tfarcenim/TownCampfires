@@ -1,0 +1,5 @@
+// 1.19.2	2025-04-11T12:22:05.8725385	Tags for minecraft:item
+4601b93552ed8483ce64b44facda5c7eeeffbcd5 data/towncampfires/tags/items/always_usable.json
+62bab62e7a8f72b63c018df9d03937c763f72e6c data/towncampfires/tags/items/usable_outside_of_campfire_range.json
+f4d3b3fbfbc0bb611d2df9ff604ac56a0fc6f030 data/towncampfires/tags/items/usable_within_campfire_range.json
+35133e95f1c8fdd7a1c21afcc231fc0bffefb9a8 data/towncampfires/tags/items/workbenches.json

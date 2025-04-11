@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.init.ModBlockEntities;
+import tfar.towncampfires.init.ModItems;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 
@@ -33,8 +34,7 @@ public class TownCampfireBlock extends CampfireBlock {
         if (pLevel.isClientSide) {
             return pState.getValue(LIT) ? createTickerHelper(pBlockEntityType, ModBlockEntities.TOWN_CAMPFIRE, CampfireBlockEntity::particleTick) : null;
         } else {
-            return pState.getValue(LIT) ? createTickerHelper(pBlockEntityType, ModBlockEntities.TOWN_CAMPFIRE, CampfireBlockEntity::cookTick) :
-                    createTickerHelper(pBlockEntityType, ModBlockEntities.TOWN_CAMPFIRE, CampfireBlockEntity::cooldownTick);
+            return createTickerHelper(pBlockEntityType, ModBlockEntities.TOWN_CAMPFIRE, TownCampfireBlockEntity::serverTick);
         }
     }
 
@@ -50,6 +50,20 @@ public class TownCampfireBlock extends CampfireBlock {
             }
             return InteractionResult.SUCCESS;
         }else {
+            if (itemstack.is(ModItems.TOWN_CAMPFIRE_EXPERIENCE)) {
+                if (!pLevel.isClientSide) {
+                    CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate((ServerLevel) pLevel);
+
+                    TownCampfire townCampfire = campfireLevelData.byLocation(pPos);
+                    if (townCampfire != null) {
+                        townCampfire.addExperience(TownCampfireExperienceItem.getReward(itemstack));
+                        if (!pPlayer.getAbilities().instabuild) {
+                            itemstack.shrink(1);
+                        }
+                    }
+                }
+                return InteractionResult.sidedSuccess(pLevel.isClientSide);
+            }
             return super.use(pState, pLevel, pPos, pPlayer, pHand, pHit);
         }
     }

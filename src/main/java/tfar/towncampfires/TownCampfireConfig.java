@@ -21,9 +21,37 @@ public class TownCampfireConfig {
 
     public static class Server {
         public final ConfigHelper.ConfigObject<List<Component>> defaultNames;
+        public final ForgeConfigSpec.IntValue radius;
+
+        public final ForgeConfigSpec.IntValue base_villagers;
+        public final ForgeConfigSpec.IntValue villagers_per_level;
+
+        public final ForgeConfigSpec.IntValue base_allowed_blocks;
+        public final ForgeConfigSpec.IntValue allowed_blocks_per_level;
+
+        public final ForgeConfigSpec.IntValue base_allowed_workbenches;
+        public final ForgeConfigSpec.IntValue allowed_workbenches_per_level;
+
+        public final ForgeConfigSpec.LongValue refresh_timer;
+
+        public final ForgeConfigSpec.IntValue experience_per_level;
+
         public Server(ForgeConfigSpec.Builder builder) {
-            builder.push("general");
+            builder.push("town_campfire_stats");
             defaultNames = ConfigHelper.defineObject(builder,"default_campfire_names", MiscCodecs.COMPONENT_CODEC.listOf(),defaultCampfireNames());
+            radius = builder.defineInRange("radius",80,1,256);
+            base_villagers = builder.defineInRange("base_villagers",7,1,1000);
+            villagers_per_level = builder.defineInRange("villagers_per_level",5,1,1000);
+
+            base_allowed_blocks = builder.defineInRange("base_allowed_blocks",50,1,10000000);
+            allowed_blocks_per_level = builder.defineInRange("allowed_blocks_per_level",10,1,10000000);
+
+            base_allowed_workbenches = builder.defineInRange("base_allowed_workbenches",1,1,1000000);
+            allowed_workbenches_per_level = builder.defineInRange("allowed_workbenches_per_level",1,1,1000000);
+
+            refresh_timer = builder.defineInRange("refresh_timer",20 * 60 * 20 * 7L,20,10000000000000L);
+            experience_per_level = builder.defineInRange("experience_per_level",5000,1,10000000);
+
             builder.pop();
         }
 

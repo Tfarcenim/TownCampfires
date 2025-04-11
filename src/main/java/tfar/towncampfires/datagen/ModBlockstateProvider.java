@@ -44,7 +44,5 @@ public class ModBlockstateProvider extends BlockStateProvider {
                     }
                     , CampfireBlock.SIGNAL_FIRE,CampfireBlock.WATERLOGGED);
         }
-
-
     }
 }
