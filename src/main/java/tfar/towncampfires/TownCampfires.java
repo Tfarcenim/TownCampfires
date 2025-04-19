@@ -7,6 +7,8 @@ import net.minecraft.core.Registry;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -136,9 +138,26 @@ public class TownCampfires
         }
     }
 
-    static Optional<BlockPos> findTownCampfire(ServerLevel serverLevel,BlockPos pPos,int distance) {
+    public static Optional<BlockPos> findTownCampfire(ServerLevel serverLevel,BlockPos pPos,int distance) {
         return serverLevel.getPoiManager().findClosest(holder -> holder.value() == ModPOIs.TOWN_CAMPFIRE, pos -> true,
                 pPos, distance, PoiManager.Occupancy.ANY);
+    }
+
+    static Optional<BlockPos> findBed(ServerLevel serverLevel,BlockPos pPos,int distance) {
+        return serverLevel.getPoiManager().findClosest(holder -> holder.value() == ModPOIs.TOWN_CAMPFIRE, pos -> true,
+                pPos, distance, PoiManager.Occupancy.ANY);
+    }
+
+    public static boolean checkBed(ServerPlayer player,BlockPos bedPos) {
+        Optional<BlockPos> campfire = TownCampfires.findTownCampfire(player.getLevel(),bedPos, TownCampfireConfig.CONFIG.radius.get());
+        if (campfire.isPresent()) {
+            BlockPos playerPos = player.blockPosition();
+            if (campfire.get().distSqr(playerPos) < 64 &&
+                    player.blockPosition().distSqr(bedPos) < 10000) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void commands(RegisterCommandsEvent event) {

@@ -2,11 +2,13 @@ package tfar.towncampfires.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.darkhax.bookshelf.api.Services;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
@@ -19,6 +21,7 @@ import tfar.towncampfires.TownCampfireConfig;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
+import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
 
 public class TownCampfireScreen extends Screen {
 
@@ -48,6 +51,9 @@ public class TownCampfireScreen extends Screen {
     protected static final int TAB_HEIGHT = 20;
 
     protected Tab current = Tab.status;
+    protected Button home;
+    protected Button bed;
+    protected Button gear;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -69,6 +75,18 @@ public class TownCampfireScreen extends Screen {
         }
         initEditBox();
         //this.setInitialFocus(this.name);
+        home = new ImageButton(leftPos+imageWidth/2 + 32,topPos+126,16,16,0,0,0,TownCampfires.id("textures/gui/home.png"),16,16,
+                b-> ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.SPAWN,townCampfire.location())));
+        addRenderableWidget(home);
+
+        bed = new BedButton(leftPos+imageWidth/2 + 32+22,topPos+126,20,20,Component.empty(),
+                b-> ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.BED,townCampfire.location())));
+        addRenderableWidget(bed);
+
+        gear = new ImageButton(leftPos+imageWidth/2 + 32+22 * 2,topPos+126,20,20,0,0,0,TownCampfires.id("textures/gui/settings.png"),20,20,b->{});
+        addRenderableWidget(gear);
+
+        switchToTab(current);
     }
 
     void initEditBox() {
@@ -106,9 +124,7 @@ public class TownCampfireScreen extends Screen {
         this.renderBg(pPoseStack, pPartialTick, pMouseX, pMouseY);
         RenderSystem.disableDepthTest();
         super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
-        if (isEditboxActive()) {
-            this.name.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
-        }
+        this.name.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
 
         if (townCampfire == null)return;
         switch (current) {
@@ -193,9 +209,23 @@ public class TownCampfireScreen extends Screen {
         return this.name.keyPressed(pKeyCode, pScanCode, pModifiers) || this.name.canConsumeInput() || super.keyPressed(pKeyCode, pScanCode, pModifiers);
     }
 
+    @Override
+    public void tick() {
+        super.tick();
+        if (townCampfire != null) {
+            double distance = minecraft.player.blockPosition().distSqr(townCampfire.location());
+            if (distance > 64) {
+                Minecraft.getInstance().setScreen(null);
+            }
+        }
+    }
+
     protected void switchToTab(Tab tab) {
          current = tab;
-         name.setEditable(isEditboxActive());
+         boolean visible = isEditboxActive();
+         name.setEditable(visible);
+         name.setVisible(visible);
+         home.visible = bed.visible = gear.visible = visible;
     }
 
     public class TabButton extends Button {
@@ -249,15 +279,18 @@ public class TownCampfireScreen extends Screen {
          * @param textureWidth
          * @param textureHeight
          */
-        public static void blitNineSlicedSizedTab(PoseStack stack, ResourceLocation texture, int x, int y, int width, int height, int sliceSize, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
+        public static void blitNineSlicedSizedTab(PoseStack stack, ResourceLocation texture, int x, int y, int width, int height,
+                                                  int sliceSize, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
             blitNineSlicedSizedTab(stack,texture, x, y, width, height, sliceSize, sliceSize, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight);
         }
 
-        public static void blitNineSlicedSizedTab(PoseStack stack,ResourceLocation texture, int x, int y, int width, int height, int sliceWidth, int sliceHeight, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
+        public static void blitNineSlicedSizedTab(PoseStack stack,ResourceLocation texture, int x, int y, int width, int height, int sliceWidth,
+                                                  int sliceHeight, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
             blitNineSlicedSizedTab(stack,texture, x, y, width, height, sliceWidth, sliceHeight, sliceWidth, sliceHeight, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight);
         }
 
-        public static void blitNineSlicedSizedTab(PoseStack stack,ResourceLocation texture, int x, int y, int width, int height, int cornerWidth, int cornerHeight, int edgeWidth, int edgeHeight, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
+        public static void blitNineSlicedSizedTab(PoseStack stack,ResourceLocation texture, int x, int y, int width, int height, int cornerWidth, int cornerHeight,
+                                                  int edgeWidth, int edgeHeight, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
             cornerWidth = Math.min(cornerWidth, width / 2);
             edgeWidth = Math.min(edgeWidth, width / 2);
             cornerHeight = Math.min(cornerHeight, height / 2);
@@ -269,31 +302,38 @@ public class TownCampfireScreen extends Screen {
                 GuiComponent.blit(stack, x, y, (float) uOffset, (float) vOffset, width, height, textureWidth, textureHeight);
             } else if (height == vHeight) {
                 GuiComponent.blit(stack, x, y, (float) uOffset, (float) vOffset, cornerWidth, height, textureWidth, textureHeight);
-                RenderUtils.blitRepeating(stack, x + cornerWidth, y, width - edgeWidth - cornerWidth, height, uOffset + cornerWidth, vOffset, uWidth - edgeWidth - cornerWidth, vHeight, textureWidth, textureHeight);
+                RenderUtils.blitRepeating(stack, x + cornerWidth, y, width - edgeWidth - cornerWidth, height,
+                        uOffset + cornerWidth, vOffset, uWidth - edgeWidth - cornerWidth, vHeight, textureWidth, textureHeight);
                 GuiComponent.blit(stack, x + width - edgeWidth, y, (float) (uOffset + uWidth - edgeWidth), (float) vOffset, edgeWidth, height, textureWidth, textureHeight);
             } else if (width == uWidth) {
                 GuiComponent.blit(stack, x, y, (float) uOffset, (float) vOffset, width, cornerHeight, textureWidth, textureHeight);
-                RenderUtils.blitRepeating(stack, x, y + cornerHeight, width, height - edgeHeight - cornerHeight, uOffset, vOffset + cornerHeight, uWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
+                RenderUtils.blitRepeating(stack, x, y + cornerHeight, width, height - edgeHeight - cornerHeight, uOffset,
+                        vOffset + cornerHeight, uWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
                 GuiComponent.blit(stack, x, y + height - edgeHeight, (float) uOffset, (float) (vOffset + vHeight - edgeHeight), width, edgeHeight, textureWidth, textureHeight);
             } else {
                 GuiComponent.blit(stack, x, y, (float) uOffset, (float) vOffset, cornerWidth, cornerHeight, textureWidth, textureHeight);
-                RenderUtils.blitRepeating(stack, x + cornerWidth, y, width - edgeWidth - cornerWidth, cornerHeight, uOffset + cornerWidth, vOffset, uWidth - edgeWidth - cornerWidth, cornerHeight, textureWidth, textureHeight);
+                RenderUtils.blitRepeating(stack, x + cornerWidth, y, width - edgeWidth - cornerWidth, cornerHeight,
+                        uOffset + cornerWidth, vOffset, uWidth - edgeWidth - cornerWidth, cornerHeight, textureWidth, textureHeight);
                 GuiComponent.blit(stack, x + width - edgeWidth, y, (float) (uOffset + uWidth - edgeWidth), (float) vOffset, edgeWidth, cornerHeight, textureWidth, textureHeight);
 
                 //bottom left
                 //GuiComponent.blit(stack, x, y + height - edgeHeight, (float) uOffset, (float) (vOffset + vHeight - edgeHeight), cornerWidth, edgeHeight, textureWidth, textureHeight);
 
                 //bottom
-                //blitRepeating(stack, x + cornerWidth, y + height - edgeHeight, width - edgeWidth - cornerWidth, edgeHeight, uOffset + cornerWidth, vOffset + vHeight - edgeHeight, uWidth - edgeWidth - cornerWidth, edgeHeight, textureWidth, textureHeight);
+                //blitRepeating(stack, x + cornerWidth, y + height - edgeHeight, width - edgeWidth - cornerWidth, edgeHeight, uOffset + cornerWidth,
+                // vOffset + vHeight - edgeHeight, uWidth - edgeWidth - cornerWidth, edgeHeight, textureWidth, textureHeight);
 
                 //bottom right
                 //GuiComponent.blit(stack, x + width - edgeWidth, y + height - edgeHeight, (float) (uOffset + uWidth - edgeWidth), (float) (vOffset + vHeight - edgeHeight), edgeWidth, edgeHeight, textureWidth, textureHeight);
                 //left
-                RenderUtils.blitRepeating(stack, x, y + cornerHeight, cornerWidth, height - edgeHeight - cornerHeight, uOffset, vOffset + cornerHeight, cornerWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
+                RenderUtils.blitRepeating(stack, x, y + cornerHeight, cornerWidth, height - edgeHeight - cornerHeight, uOffset,
+                        vOffset + cornerHeight, cornerWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
                 //middle
-                RenderUtils.blitRepeating(stack, x + cornerWidth, y + cornerHeight, width - edgeWidth - cornerWidth, height - edgeHeight - cornerHeight, uOffset + cornerWidth, vOffset + cornerHeight, uWidth - edgeWidth - cornerWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
+                RenderUtils.blitRepeating(stack, x + cornerWidth, y + cornerHeight, width - edgeWidth - cornerWidth, height - edgeHeight - cornerHeight,
+                        uOffset + cornerWidth, vOffset + cornerHeight, uWidth - edgeWidth - cornerWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
                 //right
-                RenderUtils.blitRepeating(stack, x + width - edgeWidth, y + cornerHeight, cornerWidth, height - edgeHeight - cornerHeight, uOffset + uWidth - edgeWidth, vOffset + cornerHeight, edgeWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
+                RenderUtils.blitRepeating(stack, x + width - edgeWidth, y + cornerHeight, cornerWidth, height - edgeHeight - cornerHeight,
+                        uOffset + uWidth - edgeWidth, vOffset + cornerHeight, edgeWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
             }
         }
     }

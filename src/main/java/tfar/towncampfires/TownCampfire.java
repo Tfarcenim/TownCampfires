@@ -118,6 +118,15 @@ public final class TownCampfire {
         resync = true;
     }
 
+    AABB aabb;
+
+    public AABB getBoundingBox() {
+        if (aabb == null) {
+            aabb = new AABB(location).inflate(TownCampfireConfig.CONFIG.radius.get());
+        }
+        return aabb;
+    }
+
     public void setCurrentVillagers(int currentVillagers) {
         resync |= this.currentVillagers != currentVillagers;
         this.currentVillagers = currentVillagers;
