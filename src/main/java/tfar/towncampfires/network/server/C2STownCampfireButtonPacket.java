@@ -2,14 +2,12 @@ package tfar.towncampfires.network.server;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import tfar.towncampfires.CampfireLevelData;
 import tfar.towncampfires.TownCampfire;
-import tfar.towncampfires.TownCampfireConfig;
+import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.TownCampfires;
 
 import java.util.Optional;

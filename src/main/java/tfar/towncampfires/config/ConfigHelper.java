@@ -1,4 +1,4 @@
-package tfar.towncampfires.utils;
+package tfar.towncampfires.config;
 
 /*
 The MIT License (MIT)

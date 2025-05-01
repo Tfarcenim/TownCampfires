@@ -9,6 +9,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.Nullable;
+import tfar.towncampfires.config.TownCampfireConfig;
 
 import java.util.ArrayList;
 import java.util.HashMap;

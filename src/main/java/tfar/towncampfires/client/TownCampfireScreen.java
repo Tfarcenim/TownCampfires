@@ -2,7 +2,6 @@ package tfar.towncampfires.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import net.darkhax.bookshelf.api.Services;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiComponent;
@@ -17,7 +16,7 @@ import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
 import tfar.towncampfires.TownCampfire;
-import tfar.towncampfires.TownCampfireConfig;
+import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;

@@ -10,6 +10,7 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.utils.MiscCodecs;

@@ -1,9 +1,9 @@
-package tfar.towncampfires;
+package tfar.towncampfires.config;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec2;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
-import tfar.towncampfires.utils.ConfigHelper;
 import tfar.towncampfires.utils.MiscCodecs;
 
 import java.util.ArrayList;
@@ -35,6 +35,8 @@ public class TownCampfireConfig {
         public final ForgeConfigSpec.LongValue refresh_timer;
 
         public final ForgeConfigSpec.IntValue experience_per_level;
+        
+        //public final ConfigHelper.ConfigObject<List<IntegerRange>>
 
         public Server(ForgeConfigSpec.Builder builder) {
             builder.push("town_campfire_stats");

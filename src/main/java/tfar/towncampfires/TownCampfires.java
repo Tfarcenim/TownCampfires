@@ -8,7 +8,6 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -34,6 +33,7 @@ import net.minecraftforge.registries.RegisterEvent;
 import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import tfar.towncampfires.client.TownCampfiresClient;
+import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.datagen.ModDatagen;
 import tfar.towncampfires.init.*;
 import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
@@ -61,7 +61,7 @@ public class TownCampfires
 
 
     public TownCampfires() {
-        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER,TownCampfireConfig.SERVER_SPEC);
+        ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, TownCampfireConfig.SERVER_SPEC);
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         // Register the setup method for modloading
         bus.addListener(this::setup);
