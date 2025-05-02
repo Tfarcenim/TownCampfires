@@ -18,6 +18,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -34,6 +35,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.config.TownCampfireConfig;
+import tfar.towncampfires.data.CampfireEffectReloadListener;
 import tfar.towncampfires.datagen.ModDatagen;
 import tfar.towncampfires.init.*;
 import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
@@ -78,6 +80,9 @@ public class TownCampfires
         MinecraftForge.EVENT_BUS.addListener(this::commands);
         MinecraftForge.EVENT_BUS.addListener(this::useItem);
         MinecraftForge.EVENT_BUS.addListener(this::levelTick);
+    }
+    void reloadListeners(AddReloadListenerEvent event) {
+        event.addListener(new CampfireEffectReloadListener());
     }
 
     void levelTick(TickEvent.LevelTickEvent event) {

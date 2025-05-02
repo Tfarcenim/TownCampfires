@@ -35,6 +35,8 @@ public class ModDatagen {
         BlockTagsProvider blockTagsProvider = new ModBlockTagsProvider(generator,helper);
         generator.addProvider(server,new ModItemTagProvider(generator,blockTagsProvider,helper));
         generator.addProvider(client,new ModItemModelProvider(generator,helper));
+
+        generator.addProvider(server,new CampfireEffectProvider(generator));
     }
 
 

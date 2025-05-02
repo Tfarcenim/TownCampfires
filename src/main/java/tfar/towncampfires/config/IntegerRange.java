@@ -1,7 +1,14 @@
 package tfar.towncampfires.config;
 
-public record IntegerRange(int min,int max) {
+import com.mojang.serialization.Codec;
+import com.mojang.serialization.codecs.RecordCodecBuilder;
 
+public record IntegerRange(int min, int max) {
+    public static final Codec<IntegerRange> CODEC = RecordCodecBuilder.create(integerRangeInstance -> integerRangeInstance.group(
+            Codec.INT.fieldOf("min").forGetter(IntegerRange::min),
+            Codec.INT.fieldOf("max").forGetter(IntegerRange::max)
+            ).apply(integerRangeInstance,IntegerRange::new)
+    );
     public static IntegerRange inclusive(int min,int max) {
         return new IntegerRange(min,max);
     }
