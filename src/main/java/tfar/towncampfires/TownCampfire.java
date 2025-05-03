@@ -5,18 +5,22 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
+import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import tfar.towncampfires.client.TownCampfiresClient;
+import tfar.towncampfires.config.RandomIntegerRange;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.utils.MiscCodecs;
 
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public final class TownCampfire {
     public static final Codec<TownCampfire> CODEC = RecordCodecBuilder.create(
@@ -25,7 +29,8 @@ public final class TownCampfire {
                     MiscCodecs.COMPONENT_CODEC.fieldOf("name").forGetter(TownCampfire::name),
                     Codec.LONG.fieldOf("experience").forGetter(TownCampfire::getExperience),
                     Codec.INT.fieldOf("used_blocks").forGetter(TownCampfire::getUsedBlocks),
-                    Codec.INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedBlocks)
+                    Codec.INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedBlocks),
+                    ResourceLocation.CODEC.listOf().fieldOf("active_effects").forGetter(TownCampfire::getEffects)
             ).apply(instance, TownCampfire::new));
     private final BlockPos location;
     private Component name;
@@ -34,18 +39,25 @@ public final class TownCampfire {
     private int usedBlocks;
     private int usedWorkbenches;
 
+    transient RandomSource random = RandomSource.createNewThreadLocalInstance();
+
+    private List<ResourceLocation> effects;
+
+    private transient List<CampfireEffect> cachedEffects;
+
     boolean resync;
 
-    public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches) {
+    public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches,List<ResourceLocation> effects) {
         this.location = location;
         this.name = name;
         this.experience = experience;
         this.usedBlocks = usedBlocks;
         this.usedWorkbenches = usedWorkbenches;
+        this.effects = effects;
     }
 
-    public static TownCampfire fromPacket(BlockPos location, Component name,long experience,int currentVillagers,int usedBlocks,int usedWorkbenches) {
-        TownCampfire townCampfire = new TownCampfire(location, name,experience,usedBlocks,usedWorkbenches);
+    public static TownCampfire fromPacket(BlockPos location, Component name,long experience,int currentVillagers,int usedBlocks,int usedWorkbenches,List<ResourceLocation> effects) {
+        TownCampfire townCampfire = new TownCampfire(location, name,experience,usedBlocks,usedWorkbenches,effects);
         townCampfire.currentVillagers = currentVillagers;
         return townCampfire;
     }
@@ -57,6 +69,8 @@ public final class TownCampfire {
         buf.writeInt(currentVillagers);
         buf.writeInt(usedBlocks);
         buf.writeInt(usedWorkbenches);
+
+        buf.writeCollection(effects,FriendlyByteBuf::writeResourceLocation);
     }
 
     public static TownCampfire fromPacket(FriendlyByteBuf buf) {
@@ -66,7 +80,10 @@ public final class TownCampfire {
         int currentVillagers = buf.readInt();
         int usedBlocks = buf.readInt();
         int usedWorkbenches = buf.readInt();
-        return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches);
+
+        List<ResourceLocation> resourceLocations = buf.readList(FriendlyByteBuf::readResourceLocation);
+
+        return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches,resourceLocations);
     }
 
     public int getCurrentVillagers() {
@@ -81,6 +98,10 @@ public final class TownCampfire {
         return TownCampfireConfig.CONFIG.base_villagers.get() + TownCampfireConfig.CONFIG.villagers_per_level.get() * getLevel();
     }
 
+    List<ResourceLocation> getEffects() {
+        return effects;
+    }
+
     public int getUsedWorkbenches() {
         return usedWorkbenches;
     }
@@ -90,7 +111,7 @@ public final class TownCampfire {
     }
 
     public void incrementUsedWorkbenches() {
-        usedBlocks++;
+        usedWorkbenches++;
     }
 
     public int getAllowedWorkbenches() {
@@ -113,10 +134,35 @@ public final class TownCampfire {
         return TownCampfireConfig.CONFIG.base_allowed_blocks.get() + TownCampfireConfig.CONFIG.allowed_blocks_per_level.get() * getLevel();
     }
 
-    public void resetLimits() {
+    public void refresh() {
         usedBlocks = 0;
+        usedWorkbenches = 0;
+
+        rollEffects();
 
         resync = true;
+    }
+
+    void rollEffects() {
+        cachedEffects = null;
+
+        effects.clear();
+
+        sampleEffects(TownCampfireConfig.CONFIG.positive_effects.get(),MobEffectCategory.BENEFICIAL);
+        sampleEffects(TownCampfireConfig.CONFIG.negative_effects.get(),MobEffectCategory.HARMFUL);
+    }
+
+    void sampleEffects(List<RandomIntegerRange> randomIntegerRanges ,MobEffectCategory category) {
+        if (!randomIntegerRanges.isEmpty()) {
+            List<ResourceLocation> possibleEffects = TownCampfires.campfireEffectLoader.getEffects(category);
+            Collections.shuffle(possibleEffects);
+            RandomIntegerRange range = randomIntegerRanges.get(Math.min(getLevel(), randomIntegerRanges.size() - 1));
+            int effectCount = range.roll(random);
+
+            for (int i = 0; i < effectCount; i++) {
+                effects.add(possibleEffects.get(i));
+            }
+        }
     }
 
     AABB aabb;
@@ -195,7 +241,7 @@ public final class TownCampfire {
         int radius = TownCampfireConfig.CONFIG.radius.get();
 
         if (pLevel.getGameTime() % TownCampfireConfig.CONFIG.refresh_timer.get() == 0) {
-            resetLimits();
+            refresh();
         }
 
         if (pLevel.getGameTime() % 20 ==0) {

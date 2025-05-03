@@ -8,10 +8,14 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import tfar.towncampfires.CampfireEffect;
 import tfar.towncampfires.TownCampfire;
+import tfar.towncampfires.data.CampfireEffectLoader;
 import tfar.towncampfires.init.ModBlocks;
 
 public class TownCampfiresClient {
+
+    public static CampfireEffectLoader campfireEffectLoader = new CampfireEffectLoader();
 
     public static void init(IEventBus bus) {
         bus.addListener(TownCampfiresClient::setup);

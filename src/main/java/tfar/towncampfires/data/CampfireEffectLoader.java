@@ -9,17 +9,23 @@ import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
+import net.minecraft.world.effect.MobEffectCategory;
 import org.slf4j.Logger;
 import tfar.towncampfires.CampfireEffect;
+import tfar.towncampfires.network.ForgePacketHandler;
+import tfar.towncampfires.network.client.S2CCampfireEffectPacket;
+import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
-public class CampfireEffectReloadListener extends SimpleJsonResourceReloadListener {
+public class CampfireEffectLoader extends SimpleJsonResourceReloadListener {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final Logger LOGGER = LogUtils.getLogger();
     private Map<ResourceLocation, CampfireEffect> campfireEffects = ImmutableMap.of();
-    public CampfireEffectReloadListener() {
+    public CampfireEffectLoader() {
         super(GSON,"campfire_effects");
     }
 
@@ -44,6 +50,28 @@ public class CampfireEffectReloadListener extends SimpleJsonResourceReloadListen
 
         this.campfireEffects = builder.build();
         LOGGER.info("Loaded {} campfire effects", campfireEffects.size());
+        ForgePacketHandler.sendToAll(new S2CCampfireEffectPacket(campfireEffects));
+    }
+
+    public List<ResourceLocation> getEffects(MobEffectCategory category) {
+
+        List<ResourceLocation> list = new ArrayList<>();
+        for(Map.Entry<ResourceLocation,CampfireEffect> entry : campfireEffects.entrySet()) {
+            CampfireEffect campfireEffect = entry.getValue();
+            if (campfireEffect.category() == category) {
+                list.add(entry.getKey());
+            }
+        }
+        return list;
+    }
+
+    public Map<ResourceLocation, CampfireEffect> getCampfireEffects() {
+        return campfireEffects;
+    }
+
+    public ResourceLocation lookup(CampfireEffect effect) {
+        return campfireEffects.keySet().stream()
+                .filter(resourceLocationCampfireEffectEntry -> campfireEffects.get(resourceLocationCampfireEffectEntry) == effect).findFirst().orElse(null);
     }
 
     public static CampfireEffect fromJson(ResourceLocation id, JsonObject pJson) {
@@ -51,5 +79,9 @@ public class CampfireEffectReloadListener extends SimpleJsonResourceReloadListen
             return null;
         }
         return CampfireEffect.CODEC.decode(JsonOps.INSTANCE,pJson).resultOrPartial(LOGGER::error).orElseThrow().getFirst();
+    }
+
+    public void setFromServer(Map<ResourceLocation,CampfireEffect> effectMap) {
+        this.campfireEffects = effectMap;
     }
 }

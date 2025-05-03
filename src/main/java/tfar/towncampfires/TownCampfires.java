@@ -23,6 +23,7 @@ import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
+import net.minecraftforge.event.server.ServerStoppedEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -35,7 +36,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.slf4j.Logger;
 import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.config.TownCampfireConfig;
-import tfar.towncampfires.data.CampfireEffectReloadListener;
+import tfar.towncampfires.data.CampfireEffectLoader;
 import tfar.towncampfires.datagen.ModDatagen;
 import tfar.towncampfires.init.*;
 import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
@@ -61,6 +62,8 @@ public class TownCampfires
     // Directly reference a slf4j logger
     public static final Logger LOGGER = LogUtils.getLogger();
 
+    public static CampfireEffectLoader campfireEffectLoader;
+
 
     public TownCampfires() {
         ModLoadingContext.get().registerConfig(ModConfig.Type.SERVER, TownCampfireConfig.SERVER_SPEC);
@@ -80,9 +83,15 @@ public class TownCampfires
         MinecraftForge.EVENT_BUS.addListener(this::commands);
         MinecraftForge.EVENT_BUS.addListener(this::useItem);
         MinecraftForge.EVENT_BUS.addListener(this::levelTick);
+        MinecraftForge.EVENT_BUS.addListener(this::reloadListeners);
+        MinecraftForge.EVENT_BUS.addListener(this::serverStop);
     }
     void reloadListeners(AddReloadListenerEvent event) {
-        event.addListener(new CampfireEffectReloadListener());
+        event.addListener(campfireEffectLoader = new CampfireEffectLoader());
+    }
+
+    void serverStop(ServerStoppedEvent event) {
+        campfireEffectLoader = null;
     }
 
     void levelTick(TickEvent.LevelTickEvent event) {

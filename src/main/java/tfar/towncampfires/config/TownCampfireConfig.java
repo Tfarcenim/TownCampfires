@@ -1,7 +1,6 @@
 package tfar.towncampfires.config;
 
 import net.minecraft.network.chat.Component;
-import net.minecraft.world.phys.Vec2;
 import net.minecraftforge.common.ForgeConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 import tfar.towncampfires.utils.MiscCodecs;
@@ -36,7 +35,8 @@ public class TownCampfireConfig {
 
         public final ForgeConfigSpec.IntValue experience_per_level;
         
-        //public final ConfigHelper.ConfigObject<List<IntegerRange>>
+        public final ConfigHelper.ConfigObject<List<RandomIntegerRange>> positive_effects;
+        public final ConfigHelper.ConfigObject<List<RandomIntegerRange>> negative_effects;
 
         public Server(ForgeConfigSpec.Builder builder) {
             builder.push("town_campfire_stats");
@@ -53,6 +53,16 @@ public class TownCampfireConfig {
 
             refresh_timer = builder.defineInRange("refresh_timer",20 * 60 * 20 * 7L,20,10000000000000L);
             experience_per_level = builder.defineInRange("experience_per_level",5000,1,10000000);
+
+            builder.push("effect_configuration");
+
+            positive_effects = ConfigHelper.defineObject(builder,"positive",RandomIntegerRange.CODEC.listOf(),
+                    List.of(new RandomIntegerRange(1,1,0)));
+
+            negative_effects = ConfigHelper.defineObject(builder,"negative",RandomIntegerRange.CODEC.listOf(),
+                    List.of(new RandomIntegerRange(0,0,0)));
+
+            builder.pop();
 
             builder.pop();
         }
