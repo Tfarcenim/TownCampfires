@@ -1,5 +1,5 @@
 {
-  "category": "BENEFICIAL",
+  "category": "HARMFUL",
   "desc": [
     "{\"text\":\"line 0\"}",
     "{\"text\":\"line 1\"}"
@@ -10,7 +10,7 @@
     "max": 5,
     "min": 0
   },
-  "name": "{\"text\":\"Title\"}",
+  "name": "{\"text\":\"Example Negative Effect 0\"}",
   "required_biomes": "minecraft:is_overworld",
   "required_nearby_biomes": "minecraft:is_overworld",
   "weight": 1

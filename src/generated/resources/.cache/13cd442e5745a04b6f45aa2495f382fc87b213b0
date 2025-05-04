@@ -1,2 +1,7 @@
-// 1.19.2	2025-05-02T04:53:17.0334761	Campfire Effects
-d4cb60add93c84fffadc129d47ebbf04ab8cb2a3 data/towncampfires/campfire_effects/example_positive_effect.json
+// 1.19.2	2025-05-03T18:25:45.9380915	Campfire Effects
+c4974f14e3e8d8844b4b7e0660a9d37a42073900 data/towncampfires/campfire_effects/example_negative_effect_0.json
+45fd0d736e1357afd5d3114b7f27db6519e291d2 data/towncampfires/campfire_effects/example_negative_effect_1.json
+62e1b3072727e56202187bddb1094139bfe995c6 data/towncampfires/campfire_effects/example_negative_effect_2.json
+41ac24d6938c69b9c1d4f2074627b049dbd80baf data/towncampfires/campfire_effects/example_positive_effect_0.json
+c31bd91e012345fbe7d495de81ac253e58e99236 data/towncampfires/campfire_effects/example_positive_effect_1.json
+9ebff801720a6f4f5400c79db33b5faf42b61ce4 data/towncampfires/campfire_effects/example_positive_effect_2.json

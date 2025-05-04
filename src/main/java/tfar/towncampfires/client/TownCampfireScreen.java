@@ -8,6 +8,7 @@ import net.minecraft.client.gui.GuiComponent;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.ImageButton;
+import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
@@ -15,12 +16,16 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
+import tfar.towncampfires.CampfireEffect;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
+
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class TownCampfireScreen extends Screen {
 
@@ -41,6 +46,7 @@ public class TownCampfireScreen extends Screen {
     public void setCampfire(TownCampfire townCampfire) {
         this.townCampfire = townCampfire;
         name.setValue(townCampfire.name().getString());
+        campfireEffectWidget.refreshList();
     }
 
     public enum Tab {
@@ -53,6 +59,8 @@ public class TownCampfireScreen extends Screen {
     protected Button home;
     protected Button bed;
     protected Button gear;
+
+    protected CampfireEffectWidget campfireEffectWidget;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -72,17 +80,31 @@ public class TownCampfireScreen extends Screen {
             tabButton.setFGColor(0x404040);
             addRenderableWidget(tabButton);
         }
+
+        int yPos = topPos+70;
+
+        int height = 75;
+
+        campfireEffectWidget = new CampfireEffectWidget(minecraft,100,height,yPos,yPos+height,20);
+        campfireEffectWidget.setLeftPos(leftPos+180);
+        campfireEffectWidget.setRenderTopAndBottom(false);
+        //campfireEffectWidget.setRenderBackground(false);
+        this.addRenderableWidget(campfireEffectWidget);
+
         initEditBox();
+
+        int threeBYPos = topPos + 155;
+
         //this.setInitialFocus(this.name);
-        home = new ImageButton(leftPos+imageWidth/2 + 32,topPos+126,16,16,0,0,0,TownCampfires.id("textures/gui/home.png"),16,16,
+        home = new ImageButton(leftPos+imageWidth/2 + 32,threeBYPos,16,16,0,0,0,TownCampfires.id("textures/gui/home.png"),16,16,
                 b-> ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.SPAWN,townCampfire.location())));
         addRenderableWidget(home);
 
-        bed = new BedButton(leftPos+imageWidth/2 + 32+22,topPos+126,20,20,Component.empty(),
+        bed = new BedButton(leftPos+imageWidth/2 + 32+22,threeBYPos,20,20,Component.empty(),
                 b-> ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.BED,townCampfire.location())));
         addRenderableWidget(bed);
 
-        gear = new ImageButton(leftPos+imageWidth/2 + 32+22 * 2,topPos+126,20,20,0,0,0,TownCampfires.id("textures/gui/settings.png"),20,20,b->{});
+        gear = new ImageButton(leftPos+imageWidth/2 + 32+22 * 2,threeBYPos,20,20,0,0,0,TownCampfires.id("textures/gui/settings.png"),20,20,b->{});
         addRenderableWidget(gear);
 
         switchToTab(current);
@@ -128,7 +150,7 @@ public class TownCampfireScreen extends Screen {
         if (townCampfire == null)return;
         switch (current) {
             case status -> {
-                int y = 20;
+                int y = 22;
                 int h = 15;
                 font.draw(pPoseStack,Component.literal("Villagers: "+townCampfire.getEffectiveVillagers()+"/"+townCampfire.getMaxVillagers()),
                         leftPos+8,topPos+TAB_HEIGHT+y,0x404040);
@@ -221,10 +243,11 @@ public class TownCampfireScreen extends Screen {
 
     protected void switchToTab(Tab tab) {
          current = tab;
-         boolean visible = isEditboxActive();
-         name.setEditable(visible);
-         name.setVisible(visible);
-         home.visible = bed.visible = gear.visible = visible;
+         boolean status = isEditboxActive();
+         name.setEditable(status);
+         name.setVisible(status);
+         home.visible = bed.visible = gear.visible = status;
+         campfireEffectWidget.setVisible(status);
     }
 
     public class TabButton extends Button {
@@ -333,6 +356,70 @@ public class TownCampfireScreen extends Screen {
                 //right
                 RenderUtils.blitRepeating(stack, x + width - edgeWidth, y + cornerHeight, cornerWidth, height - edgeHeight - cornerHeight,
                         uOffset + uWidth - edgeWidth, vOffset + cornerHeight, edgeWidth, vHeight - edgeHeight - cornerHeight, textureWidth, textureHeight);
+            }
+        }
+    }
+
+    public <T extends ObjectSelectionList.Entry<T>> void buildList(Consumer<T> consumer, Function<ResourceLocation, T> newEntry) {
+        townCampfire.getEffectIds().forEach(location->consumer.accept(newEntry.apply(location)));
+    }
+
+    protected class CampfireEffectWidget extends ObjectSelectionList<CampfireEffectWidget.CampfireEffectEntry> {
+
+        boolean visible;
+
+        public CampfireEffectWidget(Minecraft pMinecraft, int pWidth, int pHeight, int pY0, int pY1, int pItemHeight) {
+            super(pMinecraft, pWidth, pHeight, pY0, pY1, pItemHeight);
+            if (TownCampfireScreen.this.townCampfire != null) {
+                refreshList();
+            }
+        }
+
+        @Override
+        public int getRowWidth() {
+            return width;
+        }
+
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
+
+        public void refreshList() {
+            this.clearEntries();
+            buildList(this::addEntry, location->new CampfireEffectEntry(TownCampfiresClient.campfireEffectLoader.getCampfireEffects().get(location)));
+        }
+
+        @Override
+        public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
+            if (visible) {
+                super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+            }
+        }
+
+        public class CampfireEffectEntry extends ObjectSelectionList.Entry<CampfireEffectEntry> {
+            private final CampfireEffect effect;
+
+            CampfireEffectEntry(CampfireEffect info) {
+                this.effect = info;
+            }
+
+            @Override
+            public Component getNarration() {
+                return Component.translatable("narrator.select", effect.name());
+            }
+
+            @Override
+            public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean p_194999_5_, float partialTick)
+            {
+                Font font = TownCampfireScreen.this.font;
+                font.draw(poseStack,effect.name(),left,top,0x404040);
+            //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,    listWidth))), left + 3, top + 2, 0xFFFFFF);
+            //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(version, listWidth))), left + 3, top + 2 + font.lineHeight, 0xCCCCCC);
+
+            }
+
+            public CampfireEffect getEffect() {
+                return effect;
             }
         }
     }

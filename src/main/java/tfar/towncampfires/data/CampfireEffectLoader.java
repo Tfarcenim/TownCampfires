@@ -12,9 +12,6 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.effect.MobEffectCategory;
 import org.slf4j.Logger;
 import tfar.towncampfires.CampfireEffect;
-import tfar.towncampfires.network.ForgePacketHandler;
-import tfar.towncampfires.network.client.S2CCampfireEffectPacket;
-import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -50,7 +47,6 @@ public class CampfireEffectLoader extends SimpleJsonResourceReloadListener {
 
         this.campfireEffects = builder.build();
         LOGGER.info("Loaded {} campfire effects", campfireEffects.size());
-        ForgePacketHandler.sendToAll(new S2CCampfireEffectPacket(campfireEffects));
     }
 
     public List<ResourceLocation> getEffects(MobEffectCategory category) {

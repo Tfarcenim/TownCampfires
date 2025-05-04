@@ -13,7 +13,6 @@ import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
-import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.config.RandomIntegerRange;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.network.ForgePacketHandler;
@@ -30,7 +29,7 @@ public final class TownCampfire {
                     Codec.LONG.fieldOf("experience").forGetter(TownCampfire::getExperience),
                     Codec.INT.fieldOf("used_blocks").forGetter(TownCampfire::getUsedBlocks),
                     Codec.INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedBlocks),
-                    ResourceLocation.CODEC.listOf().fieldOf("active_effects").forGetter(TownCampfire::getEffects)
+                    ResourceLocation.CODEC.listOf().fieldOf("active_effects").forGetter(TownCampfire::getEffectIds)
             ).apply(instance, TownCampfire::new));
     private final BlockPos location;
     private Component name;
@@ -54,6 +53,7 @@ public final class TownCampfire {
         this.usedBlocks = usedBlocks;
         this.usedWorkbenches = usedWorkbenches;
         this.effects = effects;
+        removeInvalidEffects();
     }
 
     public static TownCampfire fromPacket(BlockPos location, Component name,long experience,int currentVillagers,int usedBlocks,int usedWorkbenches,List<ResourceLocation> effects) {
@@ -86,6 +86,10 @@ public final class TownCampfire {
         return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches,resourceLocations);
     }
 
+    void removeInvalidEffects() {
+        effects.removeIf(location1 -> !TownCampfires.campfireEffectLoader.getCampfireEffects().containsKey(location1));
+    }
+
     public int getCurrentVillagers() {
         return currentVillagers;
     }
@@ -98,7 +102,7 @@ public final class TownCampfire {
         return TownCampfireConfig.CONFIG.base_villagers.get() + TownCampfireConfig.CONFIG.villagers_per_level.get() * getLevel();
     }
 
-    List<ResourceLocation> getEffects() {
+    public List<ResourceLocation> getEffectIds() {
         return effects;
     }
 
@@ -146,7 +150,7 @@ public final class TownCampfire {
     void rollEffects() {
         cachedEffects = null;
 
-        effects.clear();
+        effects = new ArrayList<>();
 
         sampleEffects(TownCampfireConfig.CONFIG.positive_effects.get(),MobEffectCategory.BENEFICIAL);
         sampleEffects(TownCampfireConfig.CONFIG.negative_effects.get(),MobEffectCategory.HARMFUL);
@@ -157,7 +161,7 @@ public final class TownCampfire {
             List<ResourceLocation> possibleEffects = TownCampfires.campfireEffectLoader.getEffects(category);
             Collections.shuffle(possibleEffects);
             RandomIntegerRange range = randomIntegerRanges.get(Math.min(getLevel(), randomIntegerRanges.size() - 1));
-            int effectCount = range.roll(random);
+            int effectCount = Math.min(range.roll(random),possibleEffects.size());
 
             for (int i = 0; i < effectCount; i++) {
                 effects.add(possibleEffects.get(i));

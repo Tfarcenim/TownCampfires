@@ -8,6 +8,7 @@ import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.effect.MobEffectCategory;
 import org.slf4j.Logger;
 import tfar.towncampfires.TownCampfires;
 
@@ -46,8 +47,36 @@ public class CampfireEffectProvider implements DataProvider {
     }
 
     protected void buildCampfireEffects(Consumer<FinishedCampfireEffect> consumer) {
-        FinishedCampfireEffect.builder().desc(Component.literal("line 0"),Component.literal("line 1"))
-                .levelRange(0,5).save(consumer, TownCampfires.id("example_positive_effect"));
+        FinishedCampfireEffect.builder().title(Component.literal("Example Positive Effect 0"))
+                .desc(Component.literal("line 0"),Component.literal("line 1"))
+                .levelRange(0,5).save(consumer, TownCampfires.id("example_positive_effect_0"));
+
+        FinishedCampfireEffect.builder().title(Component.literal("Example Positive Effect 1"))
+                .desc(Component.literal("line 0"),Component.literal("line 1"))
+                .levelRange(0,5).save(consumer, TownCampfires.id("example_positive_effect_1"));
+
+        FinishedCampfireEffect.builder().title(Component.literal("Example Positive Effect 2"))
+                .desc(Component.literal("line 0"),Component.literal("line 1"))
+                .levelRange(0,5)
+                .save(consumer, TownCampfires.id("example_positive_effect_2"));
+
+        FinishedCampfireEffect.builder().title(Component.literal("Example Negative Effect 0"))
+                .desc(Component.literal("line 0"),Component.literal("line 1"))
+                .levelRange(0,5)
+                .category(MobEffectCategory.HARMFUL)
+                .save(consumer, TownCampfires.id("example_negative_effect_0"));
+
+        FinishedCampfireEffect.builder().title(Component.literal("Example Negative Effect 1"))
+                .desc(Component.literal("line 0"),Component.literal("line 1"))
+                .levelRange(0,5)
+                .category(MobEffectCategory.HARMFUL)
+                .save(consumer, TownCampfires.id("example_negative_effect_1"));
+
+        FinishedCampfireEffect.builder().title(Component.literal("Example Positive Effect 2"))
+                .desc(Component.literal("line 0"),Component.literal("line 1"))
+                .levelRange(0,5)
+                .category(MobEffectCategory.HARMFUL)
+                .save(consumer, TownCampfires.id("example_negative_effect_2"));
     }
 
     @Override

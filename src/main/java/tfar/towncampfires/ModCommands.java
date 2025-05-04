@@ -40,6 +40,7 @@ public class ModCommands {
         if (be instanceof TownCampfireBlockEntity tcbe) {
             TownCampfire townCampfire = tcbe.townCampfire;
             townCampfire.refresh();
+            source.sendSuccess(Component.literal("Refreshed campfire"),true);
             return 1;
         } else {
             source.sendFailure(Component.literal("No campfire located"));

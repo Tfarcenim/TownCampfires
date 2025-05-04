@@ -19,6 +19,7 @@ import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
+import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
@@ -40,7 +41,10 @@ import tfar.towncampfires.data.CampfireEffectLoader;
 import tfar.towncampfires.datagen.ModDatagen;
 import tfar.towncampfires.init.*;
 import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
+import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.PacketHandler;
+import tfar.towncampfires.network.client.S2CCampfireEffectPacket;
+import tfar.towncampfires.network.client.S2CModPacket;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -85,7 +89,19 @@ public class TownCampfires
         MinecraftForge.EVENT_BUS.addListener(this::levelTick);
         MinecraftForge.EVENT_BUS.addListener(this::reloadListeners);
         MinecraftForge.EVENT_BUS.addListener(this::serverStop);
+        MinecraftForge.EVENT_BUS.addListener(this::sync);
     }
+
+    void sync(OnDatapackSyncEvent event) {
+        ServerPlayer player = event.getPlayer();
+        S2CModPacket packet = new S2CCampfireEffectPacket(campfireEffectLoader.getCampfireEffects());
+        if (player != null) {
+            ForgePacketHandler.sendToClient(packet,player);
+        }else {
+            event.getPlayerList().getPlayers().forEach(player1 -> ForgePacketHandler.sendToClient(packet,player1));
+        }
+    }
+
     void reloadListeners(AddReloadListenerEvent event) {
         event.addListener(campfireEffectLoader = new CampfireEffectLoader());
     }
