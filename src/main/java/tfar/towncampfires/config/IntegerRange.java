@@ -3,6 +3,7 @@ package tfar.towncampfires.config;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.util.RandomSource;
 
 public record IntegerRange(int min, int max) {
     public static final Codec<IntegerRange> CODEC = RecordCodecBuilder.create(integerRangeInstance -> integerRangeInstance.group(
@@ -21,6 +22,14 @@ public record IntegerRange(int min, int max) {
 
     public boolean test(int i) {
         return i >= min && i <= max;
+    }
+
+    public boolean test(double d) {
+        return d >= min && d <= max;
+    }
+
+    public int pick(RandomSource random) {
+        return min + random.nextInt(max-min + 1);
     }
 
     public static IntegerRange fromPacket(FriendlyByteBuf buf) {

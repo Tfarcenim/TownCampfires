@@ -16,7 +16,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
-import tfar.towncampfires.CampfireEffect;
+import tfar.towncampfires.data.CampfireEffect;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.config.TownCampfireConfig;
@@ -100,8 +100,8 @@ public class TownCampfireScreen extends Screen {
         campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(campfireEffectWidget);
 
-        int questHeight = 250;
-        questWidget = new QuestWidget(minecraft,imageWidth / 2,questHeight,topPos+TAB_HEIGHT+5,imageHeight+3,50);
+        int questHeight = 240;
+        questWidget = new QuestWidget(minecraft,imageWidth / 2,questHeight,topPos+TAB_HEIGHT+15,topPos+questHeight -10,50);
         questWidget.setLeftPos(leftPos+5);
         questWidget.setRenderTopAndBottom(false);
         //campfireEffectWidget.setRenderBackground(false);
@@ -171,6 +171,9 @@ public class TownCampfireScreen extends Screen {
 
 
         if (townCampfire == null)return;
+
+        int questCount = townCampfire.getAvailableQuests();
+
         switch (current) {
             case status -> {
                 int y = 22;
@@ -183,7 +186,7 @@ public class TownCampfireScreen extends Screen {
                 font.draw(pPoseStack,Component.literal("Work Bench Limit: "+townCampfire.getUsedWorkbenches()+"/"+townCampfire.getAllowedWorkbenches()),
                         leftPos+8,topPos+TAB_HEIGHT+y + h*2,0x404040);
 
-                font.draw(pPoseStack,Component.literal("Quests Available: "+"TODO"+"/"+"TODO"),
+                font.draw(pPoseStack,Component.literal("Quests Available: "+questCount+"/"+questCount),
                         leftPos+8,topPos+TAB_HEIGHT+y + h*3,0x404040);
 
                 font.draw(pPoseStack,Component.literal("Refresh: "+TownCampfire.timeUntilRefresh(minecraft.level.getGameTime())),
@@ -197,6 +200,10 @@ public class TownCampfireScreen extends Screen {
                         leftPos+imageWidth/2f + 32,topPos+TAB_HEIGHT+y,0x404040);
             }
             case quest -> {
+
+                font.draw(pPoseStack,Component.literal("Quests Available: "+questCount+"/"+questCount),
+                        leftPos+8,topPos+TAB_HEIGHT+5,0x404040);
+
                 QuestWidget.QuestEntry questEntry = questWidget.getSelected();
                 if (questEntry != null) {
                     Quest quest = questEntry.quest;

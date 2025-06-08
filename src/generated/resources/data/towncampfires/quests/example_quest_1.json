@@ -1,4 +1,18 @@
 {
+  "appearance_conditions": {
+    "biome_whitelist": "minecraft:is_overworld",
+    "level_range": {
+      "max": 2147483647,
+      "min": 0
+    },
+    "nearby_biomes": "minecraft:is_overworld",
+    "spawn_distance": {
+      "max": 2147483647,
+      "min": 0
+    },
+    "weight": 1,
+    "whitelist": true
+  },
   "desc": [
     "{\"text\":\"Example Quest 1 Description\"}"
   ],
@@ -6,5 +20,5 @@
     "Count": 1,
     "id": "minecraft:gold_ingot"
   },
-  "name": "{\"text\":\"Example Quest 1\"}"
+  "name": "{\"color\":\"gold\",\"text\":\"Example Quest 1\"}"
 }

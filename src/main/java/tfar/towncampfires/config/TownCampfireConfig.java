@@ -38,6 +38,8 @@ public class TownCampfireConfig {
         public final ConfigHelper.ConfigObject<List<RandomIntegerRange>> positive_effects;
         public final ConfigHelper.ConfigObject<List<RandomIntegerRange>> negative_effects;
 
+        public final ConfigHelper.ConfigObject<IntegerRange> starting_quests;
+
         public Server(ForgeConfigSpec.Builder builder) {
             builder.push("town_campfire_stats");
             defaultNames = ConfigHelper.defineObject(builder,"default_campfire_names", MiscCodecs.COMPONENT_CODEC.listOf(),defaultCampfireNames());
@@ -61,6 +63,8 @@ public class TownCampfireConfig {
 
             negative_effects = ConfigHelper.defineObject(builder,"negative",RandomIntegerRange.CODEC.listOf(),
                     List.of(new RandomIntegerRange(0,0,0)));
+
+            starting_quests = ConfigHelper.defineObject(builder,"starting_quests",IntegerRange.CODEC,new IntegerRange(1,5));
 
             builder.pop();
 

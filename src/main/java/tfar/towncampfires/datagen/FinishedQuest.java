@@ -4,10 +4,13 @@ import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import tfar.towncampfires.TownCampfires;
+import tfar.towncampfires.config.IntegerRange;
 import tfar.towncampfires.data.quest.Quest;
+import tfar.towncampfires.data.quest.QuestAppearanceConditions;
 
 import java.util.Arrays;
 import java.util.List;
@@ -32,6 +35,8 @@ public class FinishedQuest {
         Component title= Component.literal("Title");
         ItemStack icon = Items.GOLD_INGOT.getDefaultInstance();
         List<Component> desc;
+        QuestAppearanceConditions questAppearanceConditions = new QuestAppearanceConditions(BiomeTags.IS_OVERWORLD,
+                true,BiomeTags.IS_OVERWORLD, IntegerRange.inclusive(0,Integer.MAX_VALUE),1,IntegerRange.inclusive(0,Integer.MAX_VALUE));
 
         public Builder title(Component title) {
             this.title = title;
@@ -48,12 +53,17 @@ public class FinishedQuest {
             return this;
         }
 
+        public Builder appearanceConditions(QuestAppearanceConditions questAppearanceConditions) {
+            this.questAppearanceConditions = questAppearanceConditions;
+            return this;
+        }
+
         public void save(Consumer<FinishedQuest> consumer, ResourceLocation id) {
             consumer.accept(build(id));
         }
 
         private FinishedQuest build(ResourceLocation id) {
-            return new FinishedQuest(id,new Quest(title,icon,desc));
+            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions));
         }
     }
 

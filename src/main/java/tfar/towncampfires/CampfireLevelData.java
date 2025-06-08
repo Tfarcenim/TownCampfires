@@ -43,7 +43,9 @@ public class CampfireLevelData extends SavedData {
         BlockPos blockPos = be.getBlockPos();
         if (!campfiresByPos.containsKey(blockPos)) {
             TownCampfire townCampfire = new TownCampfire(blockPos,
-                    Util.getRandom(TownCampfireConfig.CONFIG.defaultNames.get(),be.getLevel().random),0,0,0,new ArrayList<>(),new ArrayList<>());
+                    Util.getRandom(TownCampfireConfig.CONFIG.defaultNames.get(),be.getLevel().random),
+                    0,0,0,new ArrayList<>(),new ArrayList<>(),TownCampfireConfig.CONFIG.starting_quests
+                    .get().pick(be.getLevel().random));
 
             townCampfire.refresh(level);
 

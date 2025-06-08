@@ -2,7 +2,7 @@ package tfar.towncampfires.network.client;
 
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import tfar.towncampfires.CampfireEffect;
+import tfar.towncampfires.data.CampfireEffect;
 import tfar.towncampfires.client.TownCampfiresClient;
 
 import java.util.Map;

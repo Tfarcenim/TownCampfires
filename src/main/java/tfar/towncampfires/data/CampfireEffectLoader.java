@@ -14,7 +14,6 @@ import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.level.biome.Biome;
 import org.slf4j.Logger;
-import tfar.towncampfires.CampfireEffect;
 
 import java.util.ArrayList;
 import java.util.HashMap;

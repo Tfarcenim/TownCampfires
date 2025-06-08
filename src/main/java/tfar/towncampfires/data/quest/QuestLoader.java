@@ -4,14 +4,17 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.*;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.level.biome.Biome;
 import org.slf4j.Logger;
+import tfar.towncampfires.TownCampfire;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,27 +40,55 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
             try {
                 Quest quest = fromJson(resourcelocation, GsonHelper.convertToJsonObject(entry.getValue(), "top element"));
                 if (quest == null) {
-                    LOGGER.info("Skipping loading campfire effect {} as it returned null", resourcelocation);
+                    LOGGER.info("Skipping loading quest {} as it returned null", resourcelocation);
                     continue;
                 }
                 builder.put(resourcelocation, quest);
             } catch (IllegalArgumentException | JsonParseException jsonparseexception) {
-                LOGGER.error("Parsing error loading campfire effect {}", resourcelocation, jsonparseexception);
+                LOGGER.error("Parsing error loading quest {}", resourcelocation, jsonparseexception);
             }
         }
 
         this.questMap = builder.build();
-        LOGGER.info("Loaded {} campfire effects", questMap.size());
+        LOGGER.info("Loaded {} quests", questMap.size());
     }
 
     public Map<ResourceLocation, Quest> getQuestMap() {
         return questMap;
     }
 
-    public List<ResourceLocation> getEligibleQuests(Holder<Biome> biome) {
+    public List<ResourceLocation> getEligibleQuests(TownCampfire campfire, ServerLevel level) {
+        BlockPos location = campfire.location();
+        Holder<Biome> biome = level.getBiome(location);
+        List<ResourceLocation> list = new ArrayList<>();
 
-        List<ResourceLocation> list = new ArrayList<>(questMap.keySet());
+        for (Map.Entry<ResourceLocation,Quest> entry : questMap.entrySet()) {
+            ResourceLocation resourceLocation = entry.getKey();
+            Quest quest = entry.getValue();
+            QuestAppearanceConditions questAppearanceConditions = quest.appearanceConditions();
+            boolean correctBiome = biome.is(questAppearanceConditions.biomeWhitelist())^!questAppearanceConditions.isWhiteList();
+            if (!correctBiome)continue;
 
+            boolean hasNearby = false;
+            for (Holder<Biome> biomeHolder : campfire.getNearbyBiomes()) {
+                if (biomeHolder.is(questAppearanceConditions.nearbyBiomes())) {
+                    hasNearby = true;
+                    break;
+                }
+            }
+
+            if (!hasNearby) continue;
+
+            boolean inRange = questAppearanceConditions.levelRange().test(campfire.getLevel());
+            if (!inRange) continue;
+
+            double spawnDist = Math.sqrt(level.getSharedSpawnPos().distSqr(location));
+            boolean spawnCheck = questAppearanceConditions.spawnDistance().test(spawnDist);
+            if (!spawnCheck) continue;
+
+            list.add(resourceLocation);
+
+        }
         return list;
     }
 

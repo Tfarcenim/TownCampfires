@@ -6,12 +6,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.TagKey;
-import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.biome.Biome;
-import tfar.towncampfires.CampfireEffect;
+import tfar.towncampfires.data.CampfireEffect;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.config.IntegerRange;
 

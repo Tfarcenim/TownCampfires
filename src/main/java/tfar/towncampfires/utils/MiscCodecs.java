@@ -5,10 +5,12 @@ import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
-import org.checkerframework.checker.units.qual.C;
+import net.minecraft.world.level.biome.Biome;
 
 import java.util.Optional;
 
@@ -60,5 +62,14 @@ public class MiscCodecs {
 
         pBuffer.writeByte(flags);
         pBuffer.writeNullable(instance.getFactorData().orElse(null), (buf, data) -> buf.writeWithCodec(MobEffectInstance.FactorData.CODEC, data));
+    }
+
+    public static void writeTag(FriendlyByteBuf buf, TagKey<Biome> tagKey) {
+        buf.writeResourceKey(ResourceKey.create(Registry.BIOME_REGISTRY,tagKey.location()));
+    }
+
+    public static TagKey<Biome> readTag(FriendlyByteBuf buf) {
+        ResourceKey<Biome> biomeResourceKey = buf.readResourceKey(Registry.BIOME_REGISTRY);
+        return TagKey.create(Registry.BIOME_REGISTRY,biomeResourceKey.location());
     }
 }

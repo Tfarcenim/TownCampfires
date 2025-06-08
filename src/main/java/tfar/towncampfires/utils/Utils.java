@@ -3,7 +3,7 @@ package tfar.towncampfires.utils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
 import net.minecraft.util.random.WeightedEntry;
-import tfar.towncampfires.CampfireEffect;
+import tfar.towncampfires.data.CampfireEffect;
 import tfar.towncampfires.TownCampfires;
 
 import java.util.ArrayList;

@@ -1,11 +1,10 @@
-package tfar.towncampfires;
+package tfar.towncampfires.data;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.Registry;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.tags.TagKey;
 import net.minecraft.util.ExtraCodecs;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -37,8 +36,8 @@ public record CampfireEffect(Component name, List<Component> desc, MobEffectCate
         buf.writeComponent(name);
         buf.writeCollection(desc, FriendlyByteBuf::writeComponent);
         buf.writeEnum(category);
-        writeTag(buf,requiredBiomes);
-        writeTag(buf,requiredNearbyBiomes);
+        MiscCodecs.writeTag(buf,requiredBiomes);
+        MiscCodecs.writeTag(buf,requiredNearbyBiomes);
         levelRange.toPacket(buf);
         buf.writeInt(weight);
         MiscCodecs.write(effect,buf);
@@ -47,16 +46,7 @@ public record CampfireEffect(Component name, List<Component> desc, MobEffectCate
 
     public static CampfireEffect fromPacket(FriendlyByteBuf buf) {
         return new CampfireEffect(buf.readComponent(),buf.readList(FriendlyByteBuf::readComponent),buf.readEnum(MobEffectCategory.class),
-                readTag(buf),readTag(buf),IntegerRange.fromPacket(buf),buf.readInt(),MiscCodecs.from(buf),buf.readBoolean());
-    }
-
-    void writeTag(FriendlyByteBuf buf,TagKey<Biome> tagKey) {
-        buf.writeResourceKey(ResourceKey.create(Registry.BIOME_REGISTRY,tagKey.location()));
-    }
-
-    static TagKey<Biome> readTag(FriendlyByteBuf buf) {
-        ResourceKey<Biome> biomeResourceKey = buf.readResourceKey(Registry.BIOME_REGISTRY);
-        return TagKey.create(Registry.BIOME_REGISTRY,biomeResourceKey.location());
+                MiscCodecs.readTag(buf), MiscCodecs.readTag(buf),IntegerRange.fromPacket(buf),buf.readInt(),MiscCodecs.from(buf),buf.readBoolean());
     }
 
 }
