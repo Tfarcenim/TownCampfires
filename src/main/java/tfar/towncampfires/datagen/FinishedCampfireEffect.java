@@ -8,6 +8,7 @@ import net.minecraft.tags.BiomeTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.level.biome.Biome;
 import tfar.towncampfires.CampfireEffect;
@@ -41,7 +42,7 @@ public class FinishedCampfireEffect {
         TagKey<Biome> requiredNearbyBiomes = BiomeTags.IS_OVERWORLD;
         IntegerRange levelRange;
         int weight = 1;
-        MobEffect effect = MobEffects.REGENERATION;
+        MobEffectInstance effect = new MobEffectInstance(MobEffects.REGENERATION,100);
         boolean hidden;
 
         public Builder title(Component title) {
@@ -69,7 +70,7 @@ public class FinishedCampfireEffect {
             return this;
         }
 
-        public Builder effect(MobEffect effect) {
+        public Builder effect(MobEffectInstance effect) {
             this.effect =effect;
             return this;
         }

@@ -45,7 +45,7 @@ public class CampfireLevelData extends SavedData {
             TownCampfire townCampfire = new TownCampfire(blockPos,
                     Util.getRandom(TownCampfireConfig.CONFIG.defaultNames.get(),be.getLevel().random),0,0,0,new ArrayList<>());
 
-            townCampfire.refresh();
+            townCampfire.refresh(level);
 
             be.setLinkedCampfire(townCampfire);
 

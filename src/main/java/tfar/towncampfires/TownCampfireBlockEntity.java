@@ -38,8 +38,16 @@ public class TownCampfireBlockEntity extends CampfireBlockEntity {
     }
 
     public static void serverTick(Level pLevel, BlockPos pPos, BlockState pState, TownCampfireBlockEntity pBlockEntity) {
-        if (pState.getValue(CampfireBlock.LIT)) CampfireBlockEntity.cookTick(pLevel, pPos, pState, pBlockEntity);
+        if (pState.getValue(CampfireBlock.LIT)){
+            CampfireBlockEntity.cookTick(pLevel, pPos, pState, pBlockEntity);
+            extraServerTick(pLevel, pPos, pState, pBlockEntity);
+        }
         else CampfireBlockEntity.cooldownTick(pLevel, pPos, pState, pBlockEntity);
+    }
+
+    public static void extraServerTick(Level pLevel, BlockPos pPos, BlockState pState, TownCampfireBlockEntity pBlockEntity) {
+        TownCampfire townCampfire = pBlockEntity.townCampfire;
+
     }
 
         @Override

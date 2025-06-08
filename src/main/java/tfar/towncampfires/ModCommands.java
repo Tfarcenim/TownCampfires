@@ -39,7 +39,7 @@ public class ModCommands {
 
         if (be instanceof TownCampfireBlockEntity tcbe) {
             TownCampfire townCampfire = tcbe.townCampfire;
-            townCampfire.refresh();
+            townCampfire.refresh(level);
             source.sendSuccess(Component.literal("Refreshed campfire"),true);
             return 1;
         } else {

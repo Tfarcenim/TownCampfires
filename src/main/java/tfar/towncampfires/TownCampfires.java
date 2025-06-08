@@ -94,7 +94,7 @@ public class TownCampfires
 
     void sync(OnDatapackSyncEvent event) {
         ServerPlayer player = event.getPlayer();
-        S2CModPacket packet = new S2CCampfireEffectPacket(campfireEffectLoader.getCampfireEffects());
+        S2CModPacket packet = new S2CCampfireEffectPacket(campfireEffectLoader.getNonHiddenEffects());
         if (player != null) {
             ForgePacketHandler.sendToClient(packet,player);
         }else {
@@ -122,6 +122,7 @@ public class TownCampfires
         ItemStack stack = event.getItemStack();
         if (stack.isEmpty()) return;//allow empty hand interaction
         Player player = event.getEntity();
+        if (player.getAbilities().instabuild) return;
         BlockPos pos = event.getPos();
         Level level = event.getLevel();
         BlockState state = level.getBlockState(pos);

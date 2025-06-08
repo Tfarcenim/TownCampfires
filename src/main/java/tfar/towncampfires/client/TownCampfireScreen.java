@@ -24,6 +24,8 @@ import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
 
+import javax.annotation.Nullable;
+import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -32,7 +34,8 @@ public class TownCampfireScreen extends Screen {
     public static final ResourceLocation BACKGROUND = TownCampfires.id("textures/gui/background.png");
 
     protected EditBox name;
-
+    @Nullable
+    private List<FormattedCharSequence> toolTip;
     /** The X size of the inventory window in pixels. */
     protected int imageWidth = 320;
     /** The Y size of the inventory window in pixels. */
@@ -81,19 +84,19 @@ public class TownCampfireScreen extends Screen {
             addRenderableWidget(tabButton);
         }
 
-        int yPos = topPos+70;
+        int yPos = topPos+55;
 
-        int height = 75;
+        int height = 100;
 
-        campfireEffectWidget = new CampfireEffectWidget(minecraft,100,height,yPos,yPos+height,20);
-        campfireEffectWidget.setLeftPos(leftPos+180);
+        campfireEffectWidget = new CampfireEffectWidget(minecraft,160,height,yPos,yPos+height,20);
+        campfireEffectWidget.setLeftPos(leftPos+150);
         campfireEffectWidget.setRenderTopAndBottom(false);
-        //campfireEffectWidget.setRenderBackground(false);
+        campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(campfireEffectWidget);
 
         initEditBox();
 
-        int threeBYPos = topPos + 155;
+        int threeBYPos = topPos + 165;
 
         //this.setInitialFocus(this.name);
         home = new ImageButton(leftPos+imageWidth/2 + 32,threeBYPos,16,16,0,0,0,TownCampfires.id("textures/gui/home.png"),16,16,
@@ -140,12 +143,19 @@ public class TownCampfireScreen extends Screen {
         this.name.setValue(s);
     }
 
+    public void setToolTip(List<FormattedCharSequence> pToolTip) {
+        this.toolTip = pToolTip;
+    }
+
     @Override
     public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
+        this.toolTip = null;
+
         this.renderBg(pPoseStack, pPartialTick, pMouseX, pMouseY);
         RenderSystem.disableDepthTest();
         super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
         this.name.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+
 
         if (townCampfire == null)return;
         switch (current) {
@@ -173,6 +183,11 @@ public class TownCampfireScreen extends Screen {
                 font.draw(pPoseStack,Component.literal("Local Effects"),
                         leftPos+imageWidth/2f + 32,topPos+TAB_HEIGHT+y,0x404040);
             }
+        }
+
+
+        if (this.toolTip != null) {
+            this.renderTooltip(pPoseStack, this.toolTip, pMouseX, pMouseY);
         }
     }
 
@@ -392,8 +407,16 @@ public class TownCampfireScreen extends Screen {
         @Override
         public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
             if (visible) {
+                //left,bottom,right,top
+                GuiComponent.enableScissor(x0,y0,x1+10,y1);
                 super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+                GuiComponent.disableScissor();
             }
+        }
+
+        @Override
+        protected int getScrollbarPosition() {
+            return x1;
         }
 
         public class CampfireEffectEntry extends ObjectSelectionList.Entry<CampfireEffectEntry> {
@@ -409,12 +432,21 @@ public class TownCampfireScreen extends Screen {
             }
 
             @Override
-            public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight, int mouseX, int mouseY, boolean p_194999_5_, float partialTick)
+            public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
+                               int mouseX, int mouseY, boolean isMouseOver, float partialTick)
             {
                 Font font = TownCampfireScreen.this.font;
                 font.draw(poseStack,effect.name(),left,top,0x404040);
-            //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,    listWidth))), left + 3, top + 2, 0xFFFFFF);
-            //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(version, listWidth))), left + 3, top + 2 + font.lineHeight, 0xCCCCCC);
+
+                if (isMouseOver) {
+                    List<FormattedCharSequence> seq = effect.desc().stream().map(Component::getVisualOrderText).toList();
+                    TownCampfireScreen.this.setToolTip(seq);
+                }
+
+            //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,
+                //    listWidth))), left + 3, top + 2, 0xFFFFFF);
+            //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(version, listWidth))),
+                //    left + 3, top + 2 + font.lineHeight, 0xCCCCCC);
 
             }
 
@@ -423,4 +455,7 @@ public class TownCampfireScreen extends Screen {
             }
         }
     }
+
+
+
 }

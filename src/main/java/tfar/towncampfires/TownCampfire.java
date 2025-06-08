@@ -3,21 +3,27 @@ package tfar.towncampfires;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.phys.AABB;
 import tfar.towncampfires.config.RandomIntegerRange;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.utils.MiscCodecs;
+import tfar.towncampfires.utils.Utils;
 
 import java.util.*;
 
@@ -138,34 +144,53 @@ public final class TownCampfire {
         return TownCampfireConfig.CONFIG.base_allowed_blocks.get() + TownCampfireConfig.CONFIG.allowed_blocks_per_level.get() * getLevel();
     }
 
-    public void refresh() {
+    public double getRadius() {
+        return TownCampfireConfig.CONFIG.radius.get();
+    }
+
+    public void refresh(ServerLevel level) {
         usedBlocks = 0;
         usedWorkbenches = 0;
 
-        rollEffects();
+        if (isLoaded(level)) {
+            sampleNearbyBiomes(level);
+        }
+
+        rollEffects(level);
 
         resync = true;
     }
 
-    void rollEffects() {
+    private HolderSet<Biome> nearbyBiomes = HolderSet.direct();
+
+    void sampleNearbyBiomes(ServerLevel level) {
+        int search = 100;
+        Set<Holder<Biome>> sampled = new HashSet<>();
+        for (int z = - search ; z < search;z++) {
+            for (int x = - search ; x < search;x++) {
+                sampled.add(level.getBiome(location.offset(x,0,z)));
+            }
+        }
+        nearbyBiomes = HolderSet.direct(sampled.stream().toList());
+    }
+
+    void rollEffects(ServerLevel level) {
         cachedEffects = null;
 
         effects = new ArrayList<>();
 
-        sampleEffects(TownCampfireConfig.CONFIG.positive_effects.get(),MobEffectCategory.BENEFICIAL);
-        sampleEffects(TownCampfireConfig.CONFIG.negative_effects.get(),MobEffectCategory.HARMFUL);
+        sampleEffects(level,TownCampfireConfig.CONFIG.positive_effects.get(),MobEffectCategory.BENEFICIAL);
+        sampleEffects(level,TownCampfireConfig.CONFIG.negative_effects.get(),MobEffectCategory.HARMFUL);
     }
 
-    void sampleEffects(List<RandomIntegerRange> randomIntegerRanges ,MobEffectCategory category) {
+    void sampleEffects(ServerLevel level,List<RandomIntegerRange> randomIntegerRanges ,MobEffectCategory category) {
         if (!randomIntegerRanges.isEmpty()) {
-            List<ResourceLocation> possibleEffects = TownCampfires.campfireEffectLoader.getEffects(category);
+            Holder<Biome> biome = level.getBiome(location);
+            List<ResourceLocation> possibleEffects = TownCampfires.campfireEffectLoader.getEligibleEffects(getLevel(),category,biome,nearbyBiomes);
             Collections.shuffle(possibleEffects);
             RandomIntegerRange range = randomIntegerRanges.get(Math.min(getLevel(), randomIntegerRanges.size() - 1));
             int effectCount = Math.min(range.roll(random),possibleEffects.size());
-
-            for (int i = 0; i < effectCount; i++) {
-                effects.add(possibleEffects.get(i));
-            }
+            effects.addAll(Utils.pickEffects(level.random,possibleEffects,effectCount));
         }
     }
 
@@ -173,7 +198,7 @@ public final class TownCampfire {
 
     public AABB getBoundingBox() {
         if (aabb == null) {
-            aabb = new AABB(location).inflate(TownCampfireConfig.CONFIG.radius.get());
+            aabb = new AABB(location).inflate(getRadius());
         }
         return aabb;
     }
@@ -219,6 +244,10 @@ public final class TownCampfire {
         return timer - modulo;
     }
 
+    public boolean isLoaded(Level level) {
+        return level.isAreaLoaded(location, 0);
+    }
+
     @Override
     public boolean equals(Object obj) {
         if (obj == this) return true;
@@ -241,15 +270,31 @@ public final class TownCampfire {
     }
 
 
-    public void update(Level pLevel) {
-        int radius = TownCampfireConfig.CONFIG.radius.get();
+    public void update(ServerLevel pLevel) {
+        double radius = getRadius();
+        boolean loaded = isLoaded(pLevel);
 
-        if (pLevel.getGameTime() % TownCampfireConfig.CONFIG.refresh_timer.get() == 0) {
-            refresh();
+        if (pLevel.getGameTime() % 80 == 0 && loaded) {
+            AABB aabb = new AABB(location).inflate(radius).expandTowards(0, pLevel.getHeight(), 0);
+            List<Player> list = pLevel.getEntitiesOfClass(Player.class, aabb);
+            for(Player player : list) {
+                for (ResourceLocation instance : effects) {
+                    CampfireEffect campfireEffect = TownCampfires.campfireEffectLoader.getCampfireEffects().get(instance);
+                    if (campfireEffect != null) {
+                        MobEffectInstance mobEffectInstance = new MobEffectInstance(campfireEffect.effect().getEffect());
+                        mobEffectInstance.update(campfireEffect.effect());
+                        player.addEffect(mobEffectInstance);
+                    }
+                }
+            }
         }
 
-        if (pLevel.getGameTime() % 20 ==0) {
-            List<Villager> villagers = pLevel.getEntitiesOfClass(Villager.class, new AABB(location).inflate(radius));
+        if (pLevel.getGameTime() % TownCampfireConfig.CONFIG.refresh_timer.get() == 0) {
+            refresh(pLevel);
+        }
+
+        if (pLevel.getGameTime() % 20 == 0 && loaded) {
+            List<Villager> villagers = pLevel.getEntitiesOfClass(Villager.class, getBoundingBox());
             setCurrentVillagers(villagers.size());
             if (resync) {
                 List<Player> players = pLevel.getEntitiesOfClass(Player.class,new AABB(location).inflate(8));
@@ -260,6 +305,4 @@ public final class TownCampfire {
             }
         }
     }
-
-
 }

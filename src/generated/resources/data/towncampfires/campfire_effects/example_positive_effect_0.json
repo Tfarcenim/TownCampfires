@@ -1,16 +1,29 @@
 {
   "category": "BENEFICIAL",
   "desc": [
-    "{\"text\":\"line 0\"}",
-    "{\"text\":\"line 1\"}"
+    "{\"text\":\"Positive effect 0 desc\"}"
   ],
-  "effect": "minecraft:regeneration",
+  "effect": {
+    "Ambient": 0,
+    "Amplifier": 0,
+    "CurativeItems": [
+      {
+        "Count": 1,
+        "id": "minecraft:milk_bucket"
+      }
+    ],
+    "Duration": 100,
+    "Id": 10,
+    "ShowIcon": 1,
+    "ShowParticles": 1,
+    "forge:id": "minecraft:regeneration"
+  },
   "hidden": false,
   "level_range": {
     "max": 5,
     "min": 0
   },
-  "name": "{\"text\":\"Example Positive Effect 0\"}",
+  "name": "{\"text\":\"Regeneration Effect\"}",
   "required_biomes": "minecraft:is_overworld",
   "required_nearby_biomes": "minecraft:is_overworld",
   "weight": 1

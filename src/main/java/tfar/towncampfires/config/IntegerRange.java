@@ -19,6 +19,10 @@ public record IntegerRange(int min, int max) {
         buf.writeInt(max);
     }
 
+    public boolean test(int i) {
+        return i >= min && i <= max;
+    }
+
     public static IntegerRange fromPacket(FriendlyByteBuf buf) {
         return inclusive(buf.readInt(),buf.readInt());
     }

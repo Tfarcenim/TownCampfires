@@ -4,16 +4,20 @@ import com.google.common.collect.ImmutableMap;
 import com.google.gson.*;
 import com.mojang.logging.LogUtils;
 import com.mojang.serialization.JsonOps;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.effect.MobEffectCategory;
+import net.minecraft.world.level.biome.Biome;
 import org.slf4j.Logger;
 import tfar.towncampfires.CampfireEffect;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -49,12 +53,24 @@ public class CampfireEffectLoader extends SimpleJsonResourceReloadListener {
         LOGGER.info("Loaded {} campfire effects", campfireEffects.size());
     }
 
-    public List<ResourceLocation> getEffects(MobEffectCategory category) {
+    public List<ResourceLocation> getEligibleEffects(int level, MobEffectCategory category, Holder<Biome> biome, HolderSet<Biome> nearbyBiomes) {
 
         List<ResourceLocation> list = new ArrayList<>();
         for(Map.Entry<ResourceLocation,CampfireEffect> entry : campfireEffects.entrySet()) {
             CampfireEffect campfireEffect = entry.getValue();
-            if (campfireEffect.category() == category) {
+
+            boolean inRange = campfireEffect.levelRange().test(level);
+            if (!inRange) continue;
+
+            boolean hasNearby = false;
+            for (Holder<Biome> biomeHolder : nearbyBiomes) {
+                if (biomeHolder.is(campfireEffect.requiredNearbyBiomes())) {
+                    hasNearby = true;
+                    break;
+                }
+            }
+
+            if (hasNearby && campfireEffect.category() == category && biome.is(campfireEffect.requiredBiomes())) {
                 list.add(entry.getKey());
             }
         }
@@ -63,6 +79,12 @@ public class CampfireEffectLoader extends SimpleJsonResourceReloadListener {
 
     public Map<ResourceLocation, CampfireEffect> getCampfireEffects() {
         return campfireEffects;
+    }
+
+    public Map<ResourceLocation,CampfireEffect> getNonHiddenEffects() {
+        Map<ResourceLocation,CampfireEffect> copy = new HashMap<>(campfireEffects);
+        copy.entrySet().removeIf(resourceLocationCampfireEffectEntry -> resourceLocationCampfireEffectEntry.getValue().hidden());
+        return copy;
     }
 
     public ResourceLocation lookup(CampfireEffect effect) {

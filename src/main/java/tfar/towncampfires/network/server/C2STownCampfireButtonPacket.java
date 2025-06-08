@@ -35,19 +35,13 @@ public class C2STownCampfireButtonPacket implements C2SModPacket {
             switch (campfireButton) {
                 case SPAWN -> player.setRespawnPosition(player.getLevel().dimension(), player.blockPosition(), 0, true, false);
                 case BED -> {
-                    Optional<BlockPos> optional =  player.getLevel().getPoiManager().getRandom((p_217256_) -> {
-                            return p_217256_.is(PoiTypes.HOME);
-                        }, (p_23421_) -> {
-                            return true;
-                        }, PoiManager.Occupancy.ANY, player.blockPosition(), TownCampfireConfig.CONFIG.radius.get(), player.getRandom());
-                    optional.ifPresent(pos1 -> {
-                        player.startSleepInBed(pos1).ifLeft((p_49477_) -> {
-                            if (p_49477_.getMessage() != null) {
-                                player.displayClientMessage(p_49477_.getMessage(), true);
-                            }
-
-                        });
-                    });
+                    Optional<BlockPos> optional =  player.getLevel().getPoiManager().getRandom(holder -> holder.is(PoiTypes.HOME), pos -> true,
+                            PoiManager.Occupancy.ANY, player.blockPosition(), (int) townCampfire.getRadius(), player.getRandom());
+                    optional.ifPresent(pos1 -> player.startSleepInBed(pos1).ifLeft(problem -> {
+                        if (problem.getMessage() != null) {
+                            player.displayClientMessage(problem.getMessage(), true);
+                        }
+                    }));
                 }
             }
         } else {
