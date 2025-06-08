@@ -35,7 +35,8 @@ public final class TownCampfire {
                     Codec.LONG.fieldOf("experience").forGetter(TownCampfire::getExperience),
                     Codec.INT.fieldOf("used_blocks").forGetter(TownCampfire::getUsedBlocks),
                     Codec.INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedBlocks),
-                    ResourceLocation.CODEC.listOf().fieldOf("active_effects").forGetter(TownCampfire::getEffectIds)
+                    ResourceLocation.CODEC.listOf().fieldOf("active_effects").forGetter(TownCampfire::getEffectIds),
+                    ResourceLocation.CODEC.listOf().fieldOf("active_quests").forGetter(TownCampfire::getQuestIds)
             ).apply(instance, TownCampfire::new));
     private final BlockPos location;
     private Component name;
@@ -47,23 +48,25 @@ public final class TownCampfire {
     transient RandomSource random = RandomSource.createNewThreadLocalInstance();
 
     private List<ResourceLocation> effects;
-
-    private transient List<CampfireEffect> cachedEffects;
+    private List<ResourceLocation> quests;
 
     boolean resync;
 
-    public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches,List<ResourceLocation> effects) {
+    public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches,
+                        List<ResourceLocation> effects,List<ResourceLocation> quests) {
         this.location = location;
         this.name = name;
         this.experience = experience;
         this.usedBlocks = usedBlocks;
         this.usedWorkbenches = usedWorkbenches;
         this.effects = effects;
+        this.quests = quests;
         removeInvalidEffects();
     }
 
-    public static TownCampfire fromPacket(BlockPos location, Component name,long experience,int currentVillagers,int usedBlocks,int usedWorkbenches,List<ResourceLocation> effects) {
-        TownCampfire townCampfire = new TownCampfire(location, name,experience,usedBlocks,usedWorkbenches,effects);
+    public static TownCampfire fromPacket(BlockPos location, Component name,long experience,int currentVillagers,int usedBlocks,int usedWorkbenches,
+                                          List<ResourceLocation> effects,List<ResourceLocation> quests) {
+        TownCampfire townCampfire = new TownCampfire(location, name,experience,usedBlocks,usedWorkbenches,effects,quests);
         townCampfire.currentVillagers = currentVillagers;
         return townCampfire;
     }
@@ -77,6 +80,7 @@ public final class TownCampfire {
         buf.writeInt(usedWorkbenches);
 
         buf.writeCollection(effects,FriendlyByteBuf::writeResourceLocation);
+        buf.writeCollection(quests,FriendlyByteBuf::writeResourceLocation);
     }
 
     public static TownCampfire fromPacket(FriendlyByteBuf buf) {
@@ -88,8 +92,9 @@ public final class TownCampfire {
         int usedWorkbenches = buf.readInt();
 
         List<ResourceLocation> resourceLocations = buf.readList(FriendlyByteBuf::readResourceLocation);
+        List<ResourceLocation> questIds = buf.readList(FriendlyByteBuf::readResourceLocation);
 
-        return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches,resourceLocations);
+        return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches,resourceLocations,questIds);
     }
 
     void removeInvalidEffects() {
@@ -110,6 +115,10 @@ public final class TownCampfire {
 
     public List<ResourceLocation> getEffectIds() {
         return effects;
+    }
+
+    public List<ResourceLocation> getQuestIds() {
+        return quests;
     }
 
     public int getUsedWorkbenches() {
@@ -157,6 +166,7 @@ public final class TownCampfire {
         }
 
         rollEffects(level);
+        sampleQuests(level);
 
         resync = true;
     }
@@ -175,8 +185,6 @@ public final class TownCampfire {
     }
 
     void rollEffects(ServerLevel level) {
-        cachedEffects = null;
-
         effects = new ArrayList<>();
 
         sampleEffects(level,TownCampfireConfig.CONFIG.positive_effects.get(),MobEffectCategory.BENEFICIAL);
@@ -192,6 +200,14 @@ public final class TownCampfire {
             int effectCount = Math.min(range.roll(random),possibleEffects.size());
             effects.addAll(Utils.pickEffects(level.random,possibleEffects,effectCount));
         }
+    }
+
+    void  sampleQuests(ServerLevel level) {
+        quests = new ArrayList<>();
+        Holder<Biome> biome = level.getBiome(location);
+        List<ResourceLocation> possibleQuests = TownCampfires.questLoader.getEligibleQuests(biome);
+
+        quests.addAll(possibleQuests);
     }
 
     AABB aabb;

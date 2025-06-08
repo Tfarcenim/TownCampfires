@@ -1,0 +1,10 @@
+{
+  "desc": [
+    "{\"text\":\"Example Quest 4 Description\"}"
+  ],
+  "icon": {
+    "Count": 1,
+    "id": "minecraft:gold_ingot"
+  },
+  "name": "{\"text\":\"Example Quest 4\"}"
+}

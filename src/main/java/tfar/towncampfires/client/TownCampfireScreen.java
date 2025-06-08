@@ -18,8 +18,9 @@ import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
 import tfar.towncampfires.CampfireEffect;
 import tfar.towncampfires.TownCampfire;
-import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.TownCampfires;
+import tfar.towncampfires.config.TownCampfireConfig;
+import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
@@ -50,6 +51,7 @@ public class TownCampfireScreen extends Screen {
         this.townCampfire = townCampfire;
         name.setValue(townCampfire.name().getString());
         campfireEffectWidget.refreshList();
+        questWidget.refreshList();
     }
 
     public enum Tab {
@@ -64,6 +66,10 @@ public class TownCampfireScreen extends Screen {
     protected Button gear;
 
     protected CampfireEffectWidget campfireEffectWidget;
+    protected QuestWidget questWidget;
+
+    @Nullable
+    QuestWidget.QuestEntry selected;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -86,13 +92,20 @@ public class TownCampfireScreen extends Screen {
 
         int yPos = topPos+55;
 
-        int height = 100;
+        int statusHeight = 100;
 
-        campfireEffectWidget = new CampfireEffectWidget(minecraft,160,height,yPos,yPos+height,20);
+        campfireEffectWidget = new CampfireEffectWidget(minecraft,160,statusHeight,yPos,yPos+statusHeight,20);
         campfireEffectWidget.setLeftPos(leftPos+150);
         campfireEffectWidget.setRenderTopAndBottom(false);
         campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(campfireEffectWidget);
+
+        int questHeight = 250;
+        questWidget = new QuestWidget(minecraft,imageWidth / 2,questHeight,topPos+TAB_HEIGHT+5,imageHeight+3,50);
+        questWidget.setLeftPos(leftPos+5);
+        questWidget.setRenderTopAndBottom(false);
+        //campfireEffectWidget.setRenderBackground(false);
+        this.addRenderableWidget(questWidget);
 
         initEditBox();
 
@@ -183,6 +196,26 @@ public class TownCampfireScreen extends Screen {
                 font.draw(pPoseStack,Component.literal("Local Effects"),
                         leftPos+imageWidth/2f + 32,topPos+TAB_HEIGHT+y,0x404040);
             }
+            case quest -> {
+                QuestWidget.QuestEntry questEntry = questWidget.getSelected();
+                if (questEntry != null) {
+                    Quest quest = questEntry.quest;
+                    int xStart = leftPos + imageWidth/2 + 12;
+                    int yStart = topPos+TAB_HEIGHT+4;
+                    itemRenderer.renderAndDecorateFakeItem(quest.icon(),xStart,yStart);
+
+                    font.draw(pPoseStack, quest.name(),xStart+20,yStart,0xffffff);
+
+                    List<FormattedCharSequence> seq = quest.desc().stream().map(Component::getVisualOrderText).toList();
+                    for (int i = 0; i < seq.size();i++) {
+                        FormattedCharSequence formattedCharSequence = seq.get(i);
+                        font.draw(pPoseStack,formattedCharSequence,xStart + 1,yStart + 18 + 10 * i,0xffffff);
+                    }
+                    font.draw(pPoseStack,Component.literal("Complete Conditions"),xStart,yStart+100,0xffffff);
+
+                    font.draw(pPoseStack,Component.literal("Fail Conditions"),xStart,yStart+160,0xffffff);
+                }
+            }
         }
 
 
@@ -258,11 +291,15 @@ public class TownCampfireScreen extends Screen {
 
     protected void switchToTab(Tab tab) {
          current = tab;
+
          boolean status = isEditboxActive();
          name.setEditable(status);
          name.setVisible(status);
          home.visible = bed.visible = gear.visible = status;
          campfireEffectWidget.setVisible(status);
+
+         boolean quest = current == Tab.quest;
+         questWidget.setVisible(quest);
     }
 
     public class TabButton extends Button {
@@ -375,8 +412,14 @@ public class TownCampfireScreen extends Screen {
         }
     }
 
-    public <T extends ObjectSelectionList.Entry<T>> void buildList(Consumer<T> consumer, Function<ResourceLocation, T> newEntry) {
-        townCampfire.getEffectIds().forEach(location->consumer.accept(newEntry.apply(location)));
+    public <T extends ObjectSelectionList.Entry<T>> void buildList(List<ResourceLocation> list,
+                                                                   Consumer<T> consumer, Function<ResourceLocation, T> newEntry) {
+        list.forEach(location-> {
+            T entry = newEntry.apply(location);
+            if (entry != null) {
+                consumer.accept(entry);
+            }
+        });
     }
 
     protected class CampfireEffectWidget extends ObjectSelectionList<CampfireEffectWidget.CampfireEffectEntry> {
@@ -401,7 +444,7 @@ public class TownCampfireScreen extends Screen {
 
         public void refreshList() {
             this.clearEntries();
-            buildList(this::addEntry, location->new CampfireEffectEntry(TownCampfiresClient.campfireEffectLoader.getCampfireEffects().get(location)));
+            buildList(townCampfire.getEffectIds(),this::addEntry, location->new CampfireEffectEntry(TownCampfiresClient.campfireEffectLoader.getCampfireEffects().get(location)));
         }
 
         @Override
@@ -456,6 +499,90 @@ public class TownCampfireScreen extends Screen {
         }
     }
 
+    protected class QuestWidget extends ObjectSelectionList<QuestWidget.QuestEntry> {
 
+        boolean visible;
 
+        public QuestWidget(Minecraft pMinecraft, int pWidth, int pHeight, int pY0, int pY1, int pItemHeight) {
+            super(pMinecraft, pWidth, pHeight, pY0, pY1, pItemHeight);
+            if (TownCampfireScreen.this.townCampfire != null) {
+                refreshList();
+            }
+        }
+
+        @Override
+        public int getRowWidth() {
+            return width;
+        }
+
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
+
+        public void refreshList() {
+            this.clearEntries();
+            buildList(townCampfire.getQuestIds(),this::addEntry, location->new QuestEntry(TownCampfiresClient.questLoader.getQuestMap().get(location)));
+        }
+
+        @Override
+        public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
+            if (visible) {
+                //left,bottom,right,top
+                GuiComponent.enableScissor(x0,y0,x1+10,y1);
+                super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+                GuiComponent.disableScissor();
+            }
+        }
+
+        @Override
+        protected int getScrollbarPosition() {
+            return x1;
+        }
+
+        public class QuestEntry extends ObjectSelectionList.Entry<QuestEntry> {
+            private final Quest quest;
+
+            QuestEntry(Quest info) {
+                this.quest = info;
+            }
+
+            @Override
+            public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+                setSelected(this);
+                return true;
+            }
+
+            @Override
+            public Component getNarration() {
+                return Component.translatable("narrator.select", quest.name());
+            }
+
+            @Override
+            public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
+                               int mouseX, int mouseY, boolean isMouseOver, float partialTick)
+            {
+                Font font = TownCampfireScreen.this.font;
+                itemRenderer.renderAndDecorateFakeItem(quest.icon(),left,top);
+                font.draw(poseStack, quest.name(),left+20,top,0xffffff);
+
+                    List<FormattedCharSequence> seq = quest.desc().stream().map(Component::getVisualOrderText).toList();
+                    for (int i = 0; i < seq.size();i++) {
+                        FormattedCharSequence formattedCharSequence = seq.get(i);
+                        font.draw(poseStack,formattedCharSequence,left + 1,top + 18 + 10 * i,0xffffff);
+                    }
+
+                    //TownCampfireScreen.this.setToolTip(seq);
+
+                //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,
+                //    listWidth))), left + 3, top + 2, 0xFFFFFF);
+                //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(version, listWidth))),
+                //    left + 3, top + 2 + font.lineHeight, 0xCCCCCC);
+
+            }
+
+            public Quest getQuest() {
+                return quest;
+            }
+        }
+    }
 }

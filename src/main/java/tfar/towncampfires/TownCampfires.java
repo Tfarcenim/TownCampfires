@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import tfar.towncampfires.client.TownCampfiresClient;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.data.CampfireEffectLoader;
+import tfar.towncampfires.data.quest.QuestLoader;
 import tfar.towncampfires.datagen.ModDatagen;
 import tfar.towncampfires.init.*;
 import tfar.towncampfires.mixin.BlockEntityTypeAccessor;
@@ -45,6 +46,7 @@ import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.PacketHandler;
 import tfar.towncampfires.network.client.S2CCampfireEffectPacket;
 import tfar.towncampfires.network.client.S2CModPacket;
+import tfar.towncampfires.network.client.S2CQuestPacket;
 
 import java.lang.reflect.Field;
 import java.util.*;
@@ -67,6 +69,7 @@ public class TownCampfires
     public static final Logger LOGGER = LogUtils.getLogger();
 
     public static CampfireEffectLoader campfireEffectLoader;
+    public static QuestLoader questLoader;
 
 
     public TownCampfires() {
@@ -94,20 +97,25 @@ public class TownCampfires
 
     void sync(OnDatapackSyncEvent event) {
         ServerPlayer player = event.getPlayer();
-        S2CModPacket packet = new S2CCampfireEffectPacket(campfireEffectLoader.getNonHiddenEffects());
+        S2CModPacket effectPacket = new S2CCampfireEffectPacket(campfireEffectLoader.getNonHiddenEffects());
+        S2CModPacket questPacket = new S2CQuestPacket(questLoader.getQuestMap());
         if (player != null) {
-            ForgePacketHandler.sendToClient(packet,player);
+            ForgePacketHandler.sendToClient(effectPacket,player);
+            ForgePacketHandler.sendToClient(questPacket,player);
         }else {
-            event.getPlayerList().getPlayers().forEach(player1 -> ForgePacketHandler.sendToClient(packet,player1));
+            event.getPlayerList().getPlayers().forEach(player1 -> ForgePacketHandler.sendToClient(effectPacket,player1));
+            event.getPlayerList().getPlayers().forEach(player1 -> ForgePacketHandler.sendToClient(questPacket,player1));
         }
     }
 
     void reloadListeners(AddReloadListenerEvent event) {
         event.addListener(campfireEffectLoader = new CampfireEffectLoader());
+        event.addListener(questLoader = new QuestLoader());
     }
 
     void serverStop(ServerStoppedEvent event) {
         campfireEffectLoader = null;
+        questLoader = null;
     }
 
     void levelTick(TickEvent.LevelTickEvent event) {
