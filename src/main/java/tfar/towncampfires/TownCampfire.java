@@ -1,10 +1,15 @@
 package tfar.towncampfires;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -22,11 +27,14 @@ import net.minecraft.world.phys.AABB;
 import tfar.towncampfires.config.RandomIntegerRange;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.data.CampfireEffect;
+import tfar.towncampfires.data.quest.Quest;
+import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.utils.MiscCodecs;
 import tfar.towncampfires.utils.Utils;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 public final class TownCampfire {
@@ -38,7 +46,7 @@ public final class TownCampfire {
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_blocks").forGetter(TownCampfire::getUsedBlocks),
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedBlocks),
                     ResourceLocation.CODEC.listOf().fieldOf("active_effects").forGetter(TownCampfire::getEffectIds),
-                    ResourceLocation.CODEC.listOf().fieldOf("active_quests").forGetter(TownCampfire::getQuestIds),
+                    ResourceLocation.CODEC.listOf().fieldOf("visible_quests").forGetter(TownCampfire::getQuestIds),
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("starting_quests").forGetter(campfire -> campfire.startingQuestCount)
                     ).apply(instance, TownCampfire::new));
     private final BlockPos location;
@@ -55,6 +63,10 @@ public final class TownCampfire {
 
     private final int startingQuestCount;
 
+    List<QuestInstance> currentQuests = new ArrayList<>();
+
+    private Runnable markDirty;
+
     boolean resync;
 
     public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches,
@@ -68,6 +80,31 @@ public final class TownCampfire {
         this.quests = quests;
         this.startingQuestCount = startingQuestCount;
         removeInvalidEffects();
+    }
+
+    public static TownCampfire load(CompoundTag tag,CampfireLevelData data) {
+        TownCampfire townCampfire = TownCampfire.CODEC
+                .parse(new Dynamic<>(NbtOps.INSTANCE, tag)).resultOrPartial(TownCampfires.LOGGER::error).orElseThrow();
+
+        townCampfire.markDirty = data::setDirty;
+
+        ListTag currentQuests = tag.getList("current_quests", CompoundTag.TAG_COMPOUND);
+        for (Tag t : currentQuests) {
+            QuestInstance questInstance = QuestInstance.load(townCampfire,(CompoundTag) t);
+            townCampfire.currentQuests.add(questInstance);
+        }
+
+        return townCampfire;
+    }
+
+    public CompoundTag save() {
+        CompoundTag tag = (CompoundTag) TownCampfire.CODEC.encodeStart(NbtOps.INSTANCE,this).resultOrPartial(TownCampfires.LOGGER::error).orElseThrow();
+        ListTag currentQuests = new ListTag();
+        for (QuestInstance questInstance : this.currentQuests) {
+            currentQuests.add(questInstance.save());
+        }
+        tag.put("current_quests",currentQuests);
+        return tag;
     }
 
     public static TownCampfire fromPacket(BlockPos location, Component name,long experience,int currentVillagers,int usedBlocks,int usedWorkbenches,
@@ -336,5 +373,67 @@ public final class TownCampfire {
                 resync = false;
             }
         }
+    }
+
+    public void startQuest(ServerPlayer player,ResourceLocation questID) {
+        if (!quests.contains(questID)) {
+            TownCampfires.LOGGER.warn("{} Attempted to start nonexistent quest {}",player,questID);
+        } else {
+            Quest quest = TownCampfires.questLoader.getQuestMap().get(questID);
+            QuestInstance existing = findExistingQuest(quest,player);
+            if (existing == null) {//make a new quest instance
+                switch (quest.type()) {
+                    case normal,level -> {
+                        QuestInstance questInstance = new QuestInstance(this,quest,player.getUUID());
+                        currentQuests.add(questInstance);
+                        questInstance.setActive(true);
+                        markDirty.run();
+                    }
+                    case preparation_solo, preparation_all -> {
+                        //check for other existing instances first!
+                        boolean wasAdded = false;
+                        for (QuestInstance questInstance : this.currentQuests) {
+                            Quest quest1 = questInstance.quest();
+                            if (quest1 == quest && !questInstance.hasPlayer(player)) {
+                                questInstance.addPlayer(player);
+                                wasAdded = true;
+                                markDirty.run();
+                                break;
+                            }
+                        }
+
+                        if (!wasAdded) {
+                            QuestInstance questInstance = new QuestInstance(this,quest,player.getUUID());
+                            currentQuests.add(questInstance);
+                            markDirty.run();
+                        }
+                    }
+                }
+            } else {
+                switch (quest.type()) {
+                    case normal -> {
+
+                    }
+                    case preparation_solo -> {
+                        existing.setActive(true);
+                    }
+                    case preparation_all -> {
+                        existing.setActive(true);
+                    }
+                    case level -> {
+                    }
+                }
+            }
+        }
+    }
+
+    @Nullable public QuestInstance findExistingQuest(Quest quest,ServerPlayer player) {
+        for (QuestInstance questInstance : this.currentQuests) {
+            Quest quest1 = questInstance.quest();
+            if (quest1 == quest && questInstance.isLeader(player)) {
+                return questInstance;
+            }
+        }
+        return null;
     }
 }

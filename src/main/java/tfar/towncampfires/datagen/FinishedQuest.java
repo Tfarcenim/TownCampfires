@@ -37,6 +37,7 @@ public class FinishedQuest {
         List<Component> desc;
         QuestAppearanceConditions questAppearanceConditions = new QuestAppearanceConditions(BiomeTags.IS_OVERWORLD,
                 true,BiomeTags.IS_OVERWORLD, IntegerRange.inclusive(0,Integer.MAX_VALUE),1,IntegerRange.inclusive(0,Integer.MAX_VALUE));
+        Quest.Type type = Quest.Type.normal;
 
         public Builder title(Component title) {
             this.title = title;
@@ -58,12 +59,17 @@ public class FinishedQuest {
             return this;
         }
 
+        public Builder type(Quest.Type type) {
+            this.type = type;
+            return this;
+        }
+
         public void save(Consumer<FinishedQuest> consumer, ResourceLocation id) {
             consumer.accept(build(id));
         }
 
         private FinishedQuest build(ResourceLocation id) {
-            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions));
+            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions,type));
         }
     }
 

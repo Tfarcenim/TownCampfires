@@ -1,4 +1,5 @@
 {
+  "type": "normal",
   "appearance_conditions": {
     "biome_whitelist": "minecraft:is_overworld",
     "level_range": {

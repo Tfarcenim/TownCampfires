@@ -17,6 +17,7 @@ import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.storage.loot.PredicateManager;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
@@ -110,6 +111,7 @@ public class TownCampfires
 
     void reloadListeners(AddReloadListenerEvent event) {
         event.addListener(campfireEffectLoader = new CampfireEffectLoader());
+        PredicateManager predicateManager = event.getServerResources().getPredicateManager();
         event.addListener(questLoader = new QuestLoader());
     }
 

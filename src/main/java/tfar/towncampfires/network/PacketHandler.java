@@ -7,6 +7,7 @@ import tfar.towncampfires.network.client.S2CQuestPacket;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
+import tfar.towncampfires.network.server.C2STownCampfireStartQuestPacket;
 
 import java.util.Locale;
 
@@ -19,6 +20,8 @@ public class PacketHandler {
 
         ForgePacketHandler.registerServerPacket(C2SSetTownCampfireNamePacket.class, C2SSetTownCampfireNamePacket::new);
         ForgePacketHandler.registerServerPacket(C2STownCampfireButtonPacket.class, C2STownCampfireButtonPacket::new);
+        ForgePacketHandler.registerServerPacket(C2STownCampfireStartQuestPacket.class, C2STownCampfireStartQuestPacket::new);
+
     }
 
     public static ResourceLocation packet(Class<?> clazz) {

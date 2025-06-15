@@ -1,10 +1,9 @@
 package tfar.towncampfires;
 
-import com.mojang.serialization.Dynamic;
 import net.minecraft.Util;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -73,11 +72,11 @@ public class CampfireLevelData extends SavedData {
 
     protected void load(CompoundTag compoundTag) {
         if (compoundTag.contains("campfires")) {
-            Tag campfiresTag = compoundTag.get("campfires");
-            campfiresByIndex = new ArrayList<>(TownCampfire.CODEC.listOf()
-                    .parse(new Dynamic<>(NbtOps.INSTANCE, campfiresTag)).resultOrPartial(TownCampfires.LOGGER::error).orElse(new ArrayList<>()));
+            ListTag campfiresTag = compoundTag.getList("campfires",Tag.TAG_COMPOUND);
 
-            for (TownCampfire townCampfire : campfiresByIndex) {
+            for (Tag tag : campfiresTag) {
+                TownCampfire townCampfire = TownCampfire.load((CompoundTag) tag,this);
+                campfiresByIndex.add(townCampfire);
                 campfiresByPos.put(townCampfire.location(), townCampfire);
             }
         }
@@ -85,8 +84,12 @@ public class CampfireLevelData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag pCompoundTag) {
-        Tag campfiresTag = TownCampfire.CODEC.listOf().encodeStart(NbtOps.INSTANCE,campfiresByIndex).resultOrPartial(TownCampfires.LOGGER::error).orElseThrow();
-        pCompoundTag.put("campfires",campfiresTag);
+        ListTag listTag = new ListTag();
+
+        for (TownCampfire campfire : campfiresByIndex) {
+            listTag.add(campfire.save());
+        }
+        pCompoundTag.put("campfires",listTag);
         return pCompoundTag;
     }
 

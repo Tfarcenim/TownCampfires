@@ -24,6 +24,7 @@ import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
+import tfar.towncampfires.network.server.C2STownCampfireStartQuestPacket;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -68,8 +69,7 @@ public class TownCampfireScreen extends Screen {
     protected CampfireEffectWidget campfireEffectWidget;
     protected QuestWidget questWidget;
 
-    @Nullable
-    QuestWidget.QuestEntry selected;
+    protected Button startQuest;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -123,7 +123,16 @@ public class TownCampfireScreen extends Screen {
         gear = new ImageButton(leftPos+imageWidth/2 + 32+22 * 2,threeBYPos,20,20,0,0,0,TownCampfires.id("textures/gui/settings.png"),20,20,b->{});
         addRenderableWidget(gear);
 
+        startQuest = new Button(leftPos + imageWidth/2,topPos+165,60,20,Component.literal("Start Quest"),b -> pressStart());
+
         switchToTab(current);
+    }
+
+    void pressStart() {
+        QuestWidget.QuestEntry selected = questWidget.getSelected();
+        if (selected != null) {
+            ForgePacketHandler.sendToServer(new C2STownCampfireStartQuestPacket(TownCampfiresClient.questLoader.lookup(selected.quest),townCampfire.location()));
+        }
     }
 
     void initEditBox() {
