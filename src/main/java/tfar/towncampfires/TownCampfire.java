@@ -3,13 +3,12 @@ package tfar.towncampfires;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
+import net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance;
+import net.minecraft.advancements.critereon.SimpleCriterionTrigger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.NbtOps;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.*;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -30,12 +29,14 @@ import tfar.towncampfires.data.CampfireEffect;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.network.ForgePacketHandler;
+import tfar.towncampfires.network.client.S2CQuestInstancePacket;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.utils.MiscCodecs;
 import tfar.towncampfires.utils.Utils;
 
 import javax.annotation.Nullable;
 import java.util.*;
+import java.util.function.Predicate;
 
 public final class TownCampfire {
     public static final Codec<TownCampfire> CODEC = RecordCodecBuilder.create(
@@ -45,7 +46,6 @@ public final class TownCampfire {
                     Codec.LONG.fieldOf("experience").forGetter(TownCampfire::getExperience),
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_blocks").forGetter(TownCampfire::getUsedBlocks),
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedBlocks),
-                    ResourceLocation.CODEC.listOf().fieldOf("active_effects").forGetter(TownCampfire::getEffectIds),
                     ResourceLocation.CODEC.listOf().fieldOf("visible_quests").forGetter(TownCampfire::getQuestIds),
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("starting_quests").forGetter(campfire -> campfire.startingQuestCount)
                     ).apply(instance, TownCampfire::new));
@@ -58,7 +58,7 @@ public final class TownCampfire {
 
     transient RandomSource random = RandomSource.createNewThreadLocalInstance();
 
-    private List<ResourceLocation> effects;
+    private final List<ResourceLocation> effects = new ArrayList<>();
     private List<ResourceLocation> quests;
 
     private final int startingQuestCount;
@@ -69,14 +69,12 @@ public final class TownCampfire {
 
     boolean resync;
 
-    public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches,
-                        List<ResourceLocation> effects,List<ResourceLocation> quests,int startingQuestCount) {
+    public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches, List<ResourceLocation> quests,int startingQuestCount) {
         this.location = location;
         this.name = name;
         this.experience = experience;
         this.usedBlocks = usedBlocks;
         this.usedWorkbenches = usedWorkbenches;
-        this.effects = effects;
         this.quests = quests;
         this.startingQuestCount = startingQuestCount;
         removeInvalidEffects();
@@ -94,6 +92,15 @@ public final class TownCampfire {
             townCampfire.currentQuests.add(questInstance);
         }
 
+        ListTag activeEffects = tag.getList("active_effects",Tag.TAG_STRING);
+        List<ResourceLocation> effe = new ArrayList<>();
+
+        for (Tag t : activeEffects) {
+            effe.add(new ResourceLocation(t.getAsString()));
+        }
+
+        townCampfire.effects.addAll(effe);
+
         return townCampfire;
     }
 
@@ -107,10 +114,12 @@ public final class TownCampfire {
         return tag;
     }
 
-    public static TownCampfire fromPacket(BlockPos location, Component name,long experience,int currentVillagers,int usedBlocks,int usedWorkbenches,
-                                          List<ResourceLocation> effects,List<ResourceLocation> quests,int startingQuestCount) {
-        TownCampfire townCampfire = new TownCampfire(location, name,experience,usedBlocks,usedWorkbenches,effects,quests,startingQuestCount);
+    public static TownCampfire fromPacket(BlockPos location, Component name, long experience, int currentVillagers, int usedBlocks, int usedWorkbenches,
+                                          List<ResourceLocation> effects, List<ResourceLocation> quests, int startingQuestCount, List<QuestInstance> activeQuests) {
+        TownCampfire townCampfire = new TownCampfire(location, name,experience,usedBlocks,usedWorkbenches,quests,startingQuestCount);
         townCampfire.currentVillagers = currentVillagers;
+        townCampfire.currentQuests.addAll(activeQuests);
+        townCampfire.effects.addAll(effects);
         return townCampfire;
     }
 
@@ -125,6 +134,7 @@ public final class TownCampfire {
         buf.writeCollection(effects,FriendlyByteBuf::writeResourceLocation);
         buf.writeCollection(quests,FriendlyByteBuf::writeResourceLocation);
         buf.writeInt(startingQuestCount);
+        buf.writeCollection(currentQuests,(buf1, questInstance) -> questInstance.toPacket(buf1));
     }
 
     public static TownCampfire fromPacket(FriendlyByteBuf buf) {
@@ -140,7 +150,20 @@ public final class TownCampfire {
 
         int startingQuestCount = buf.readInt();
 
-        return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches,resourceLocations,questIds,startingQuestCount);
+        List<QuestInstance> activeQuests = buf.readList(QuestInstance::fromPacket);
+
+
+
+        return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches,resourceLocations,questIds,startingQuestCount,activeQuests);
+    }
+
+    public<T extends AbstractCriterionTriggerInstance> void
+    checkQuests(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
+        for (QuestInstance questInstance : currentQuests) {
+            if (questInstance.isActive()) {
+                questInstance.check(trigger,pPlayer,pTestTrigger);
+            }
+        }
     }
 
     void removeInvalidEffects() {
@@ -239,7 +262,7 @@ public final class TownCampfire {
     }
 
     void rollEffects(ServerLevel level) {
-        effects = new ArrayList<>();
+        effects.clear();
 
         sampleEffects(level,TownCampfireConfig.CONFIG.positive_effects.get(),MobEffectCategory.BENEFICIAL);
         sampleEffects(level,TownCampfireConfig.CONFIG.negative_effects.get(),MobEffectCategory.HARMFUL);
@@ -384,9 +407,10 @@ public final class TownCampfire {
             if (existing == null) {//make a new quest instance
                 switch (quest.type()) {
                     case normal,level -> {
-                        QuestInstance questInstance = new QuestInstance(this,quest,player.getUUID());
+                        QuestInstance questInstance = new QuestInstance(this,questID,player.getUUID());
                         currentQuests.add(questInstance);
                         questInstance.setActive(true);
+                        sendQuestsTo(player);
                         markDirty.run();
                     }
                     case preparation_solo, preparation_all -> {
@@ -403,7 +427,7 @@ public final class TownCampfire {
                         }
 
                         if (!wasAdded) {
-                            QuestInstance questInstance = new QuestInstance(this,quest,player.getUUID());
+                            QuestInstance questInstance = new QuestInstance(this,questID,player.getUUID());
                             currentQuests.add(questInstance);
                             markDirty.run();
                         }
@@ -425,6 +449,10 @@ public final class TownCampfire {
                 }
             }
         }
+    }
+
+    public void sendQuestsTo(ServerPlayer player) {
+        ForgePacketHandler.sendToClient(new S2CQuestInstancePacket(currentQuests),player);
     }
 
     @Nullable public QuestInstance findExistingQuest(Quest quest,ServerPlayer player) {

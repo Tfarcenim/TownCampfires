@@ -3,6 +3,7 @@ package tfar.towncampfires.network;
 import net.minecraft.resources.ResourceLocation;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.network.client.S2CCampfireEffectPacket;
+import tfar.towncampfires.network.client.S2CQuestInstancePacket;
 import tfar.towncampfires.network.client.S2CQuestPacket;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
@@ -17,6 +18,8 @@ public class PacketHandler {
         ForgePacketHandler.registerClientPacket(S2CTownCampfirePacket.class,S2CTownCampfirePacket::new);
         ForgePacketHandler.registerClientPacket(S2CCampfireEffectPacket.class,S2CCampfireEffectPacket::new);
         ForgePacketHandler.registerClientPacket(S2CQuestPacket.class, S2CQuestPacket::new);
+
+        ForgePacketHandler.registerClientPacket(S2CQuestInstancePacket.class, S2CQuestInstancePacket::new);
 
         ForgePacketHandler.registerServerPacket(C2SSetTownCampfireNamePacket.class, C2SSetTownCampfireNamePacket::new);
         ForgePacketHandler.registerServerPacket(C2STownCampfireButtonPacket.class, C2STownCampfireButtonPacket::new);

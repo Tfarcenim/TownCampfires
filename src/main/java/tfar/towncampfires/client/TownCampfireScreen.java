@@ -21,6 +21,7 @@ import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.data.quest.Quest;
+import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
@@ -28,6 +29,7 @@ import tfar.towncampfires.network.server.C2STownCampfireStartQuestPacket;
 
 import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -123,7 +125,8 @@ public class TownCampfireScreen extends Screen {
         gear = new ImageButton(leftPos+imageWidth/2 + 32+22 * 2,threeBYPos,20,20,0,0,0,TownCampfires.id("textures/gui/settings.png"),20,20,b->{});
         addRenderableWidget(gear);
 
-        startQuest = new Button(leftPos + imageWidth/2,topPos+165,60,20,Component.literal("Start Quest"),b -> pressStart());
+        startQuest = new Button(leftPos + imageWidth/2+16,topPos+imageHeight - 25,60,20,Component.literal("Start Quest"),b -> pressStart());
+        addRenderableWidget(startQuest);
 
         switchToTab(current);
     }
@@ -210,7 +213,7 @@ public class TownCampfireScreen extends Screen {
             }
             case quest -> {
 
-                font.draw(pPoseStack,Component.literal("Quests Available: "+questCount+"/"+questCount),
+                font.draw(pPoseStack,Component.literal("Quests: "+questCount+"/"+questCount),
                         leftPos+8,topPos+TAB_HEIGHT+5,0x404040);
 
                 QuestWidget.QuestEntry questEntry = questWidget.getSelected();
@@ -314,8 +317,21 @@ public class TownCampfireScreen extends Screen {
          home.visible = bed.visible = gear.visible = status;
          campfireEffectWidget.setVisible(status);
 
+         startQuest.visible = tab == Tab.quest && questWidget.getSelected() != null && isQuestAvailable(questWidget.getSelected().quest);
+
          boolean quest = current == Tab.quest;
          questWidget.setVisible(quest);
+    }
+
+    public boolean isQuestAvailable(Quest quest) {
+        ResourceLocation questID = TownCampfiresClient.questLoader.lookup(quest);
+        for (QuestInstance currentQuest : TownCampfiresClient.currentQuests) {
+            ResourceLocation id = currentQuest.questID();
+            if (Objects.equals(questID,id) && currentQuest.isActive()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public class TabButton extends Button {
@@ -523,6 +539,14 @@ public class TownCampfireScreen extends Screen {
             super(pMinecraft, pWidth, pHeight, pY0, pY1, pItemHeight);
             if (TownCampfireScreen.this.townCampfire != null) {
                 refreshList();
+            }
+        }
+
+        @Override
+        public void setSelected(@org.jetbrains.annotations.Nullable TownCampfireScreen.QuestWidget.QuestEntry pSelected) {
+            super.setSelected(pSelected);
+            if (pSelected != null && isQuestAvailable(pSelected.quest)) {
+                startQuest.visible = true;
             }
         }
 

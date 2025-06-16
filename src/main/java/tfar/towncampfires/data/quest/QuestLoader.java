@@ -3,7 +3,7 @@ package tfar.towncampfires.data.quest;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.*;
 import com.mojang.logging.LogUtils;
-import com.mojang.serialization.JsonOps;
+import net.minecraft.advancements.critereon.DeserializationContext;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.resources.ResourceLocation;
@@ -13,6 +13,7 @@ import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.minecraft.world.level.biome.Biome;
+import net.minecraft.world.level.storage.loot.PredicateManager;
 import org.slf4j.Logger;
 import tfar.towncampfires.TownCampfire;
 
@@ -24,10 +25,12 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final Logger LOGGER = LogUtils.getLogger();
+    private final PredicateManager manager;
     private Map<ResourceLocation, Quest> questMap = ImmutableMap.of();
 
-    public QuestLoader() {
+    public QuestLoader(PredicateManager manager) {
         super(GSON, "quests");
+        this.manager = manager;
     }
 
     @Override
@@ -97,11 +100,11 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
                 .filter(resourceLocationCampfireEffectEntry -> questMap.get(resourceLocationCampfireEffectEntry) == quest).findFirst().orElse(null);
     }
 
-    public static Quest fromJson(ResourceLocation id, JsonObject pJson) {
+    public Quest fromJson(ResourceLocation id, JsonObject pJson) {
         if (pJson.size() == 0) {
             return null;
         }
-        return Quest.CODEC.decode(JsonOps.INSTANCE, pJson).resultOrPartial(LOGGER::error).orElseThrow().getFirst();
+        return Quest.read(pJson,new DeserializationContext(id, this.manager));
     }
 
     public void setFromServer(Map<ResourceLocation, Quest> quests) {

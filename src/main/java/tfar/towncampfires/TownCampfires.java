@@ -1,6 +1,8 @@
 package tfar.towncampfires;
 
 import com.mojang.logging.LogUtils;
+import net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance;
+import net.minecraft.advancements.critereon.SimpleCriterionTrigger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.MappedRegistry;
 import net.minecraft.core.Registry;
@@ -23,6 +25,7 @@ import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
 import net.minecraftforge.event.server.ServerStoppedEvent;
@@ -51,6 +54,7 @@ import tfar.towncampfires.network.client.S2CQuestPacket;
 
 import java.lang.reflect.Field;
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 // The value here should match an entry in the META-INF/mods.toml file
@@ -94,6 +98,18 @@ public class TownCampfires
         MinecraftForge.EVENT_BUS.addListener(this::reloadListeners);
         MinecraftForge.EVENT_BUS.addListener(this::serverStop);
         MinecraftForge.EVENT_BUS.addListener(this::sync);
+        MinecraftForge.EVENT_BUS.addListener(this::playerLogin);
+    }
+
+    void playerLogin(PlayerEvent.PlayerLoggedInEvent event) {
+        ServerPlayer player = (ServerPlayer) event.getEntity();
+        CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(player.server.overworld());
+        if (campfireLevelData != null) {
+            TownCampfire visited = campfireLevelData.getLastVisited(player.getUUID());
+            if (visited != null) {
+                visited.sendQuestsTo(player);
+            }
+        }
     }
 
     void sync(OnDatapackSyncEvent event) {
@@ -112,7 +128,7 @@ public class TownCampfires
     void reloadListeners(AddReloadListenerEvent event) {
         event.addListener(campfireEffectLoader = new CampfireEffectLoader());
         PredicateManager predicateManager = event.getServerResources().getPredicateManager();
-        event.addListener(questLoader = new QuestLoader());
+        event.addListener(questLoader = new QuestLoader(predicateManager));
     }
 
     void serverStop(ServerStoppedEvent event) {
@@ -235,6 +251,15 @@ public class TownCampfires
         }
     }
 
+    public static<T extends AbstractCriterionTriggerInstance> void
+    checkQuestCriterion(SimpleCriterionTrigger<T>trigger,ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
+        CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(pPlayer.server.overworld());
+        if (campfireLevelData != null) {
+            for (TownCampfire campfire : campfireLevelData.getCampfiresByIndex()) {
+                campfire.checkQuests(trigger,pPlayer,pTestTrigger);
+            }
+        }
+    }
 
     private void setup(final FMLCommonSetupEvent event) {
         PacketHandler.registerPackets();

@@ -1,11 +1,14 @@
 package tfar.towncampfires.utils;
 
 import com.mojang.serialization.Codec;
+import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.CriterionTrigger;
 import net.minecraft.core.Registry;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
@@ -20,6 +23,9 @@ public class MiscCodecs {
 
     public static final Codec<MobEffectInstance> MOB_EFFECT_INSTANCE_CODEC = CompoundTag.CODEC.xmap(MobEffectInstance::load,
             instance -> instance.save(new CompoundTag()));
+
+    public static final Codec<CriterionTrigger<?>> CRITERION_TRIGGER_CODEC =
+            ResourceLocation.CODEC.xmap(CriteriaTriggers::getCriterion, CriterionTrigger::getId);
 
 
     public static <E extends Enum<E>> Codec<E> enumCodec(Class<E> eClass) {

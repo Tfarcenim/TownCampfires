@@ -14,6 +14,15 @@
     "weight": 1,
     "whitelist": true
   },
+  "criteria": [
+    {
+      "count": 5,
+      "trigger": {
+        "conditions": {},
+        "trigger": "minecraft:player_killed_entity"
+      }
+    }
+  ],
   "desc": [
     "{\"text\":\"Example Quest 4 Description\"}"
   ],

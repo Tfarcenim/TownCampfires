@@ -4,6 +4,8 @@ import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
+import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.critereon.KilledTrigger;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
@@ -11,6 +13,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 import tfar.towncampfires.TownCampfires;
+import tfar.towncampfires.data.quest.QuestCriteria;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -49,22 +52,27 @@ public class QuestProvider implements DataProvider {
     protected void buildQuests(Consumer<FinishedQuest> consumer) {
         FinishedQuest.builder().title(Component.literal("Example Quest 0").withStyle(ChatFormatting.RED))
                 .desc(Component.literal("Example Quest 0 Description"))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity()),5)
                 .save(consumer, TownCampfires.id("example_quest_0"));
 
         FinishedQuest.builder().title(Component.literal("Example Quest 1").withStyle(ChatFormatting.GOLD))
                 .desc(Component.literal("Example Quest 1 Description"))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity()),5)
                 .save(consumer, TownCampfires.id("example_quest_1"));
 
         FinishedQuest.builder().title(Component.literal("Example Quest 2").withStyle(ChatFormatting.YELLOW))
                 .desc(Component.literal("Example Quest 2 Description"))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity()),5)
                 .save(consumer, TownCampfires.id("example_quest_2"));
 
         FinishedQuest.builder().title(Component.literal("Example Quest 3").withStyle(ChatFormatting.GREEN))
                 .desc(Component.literal("Example Quest 3 Description"))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity()),5)
                 .save(consumer, TownCampfires.id("example_quest_3"));
 
         FinishedQuest.builder().title(Component.literal("Example Quest 4").withStyle(ChatFormatting.BLUE))
                 .desc(Component.literal("Example Quest 4 Description"))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity()),5)
                 .save(consumer, TownCampfires.id("example_quest_4"));
 
     }

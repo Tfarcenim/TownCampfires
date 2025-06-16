@@ -1,6 +1,5 @@
 package tfar.towncampfires;
 
-import net.darkhax.bookshelf.api.Services;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -46,7 +45,9 @@ public class TownCampfireBlock extends CampfireBlock {
                 TownCampfiresClient.openCampfireScreen(pPlayer);
             } else {
                 CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate((ServerLevel) pLevel);
-                ForgePacketHandler.sendToClient(new S2CTownCampfirePacket(campfireLevelData.byLocation(pPos)), (ServerPlayer) pPlayer);
+                TownCampfire townCampfire = campfireLevelData.byLocation(pPos);
+                campfireLevelData.markVisit((ServerPlayer) pPlayer,townCampfire);
+                ForgePacketHandler.sendToClient(new S2CTownCampfirePacket(townCampfire), (ServerPlayer) pPlayer);
             }
             return InteractionResult.SUCCESS;
         }else {
