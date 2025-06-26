@@ -2,6 +2,7 @@ package tfar.towncampfires.datagen;
 
 import com.google.gson.JsonObject;
 import com.mojang.datafixers.util.Pair;
+import net.minecraft.commands.CommandFunction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BiomeTags;
@@ -11,6 +12,7 @@ import tfar.towncampfires.config.IntegerRange;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestAppearanceConditions;
 import tfar.towncampfires.data.quest.QuestCriteria;
+import tfar.towncampfires.data.quest.QuestRewards;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -41,6 +43,8 @@ public class FinishedQuest {
         Quest.Type type = Quest.Type.normal;
 
         List<Pair<QuestCriteria<?>,Integer>> criteria = new ArrayList<>();
+
+        QuestRewards rewards = new QuestRewards(1, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
 
         public Builder title(Component title) {
             this.title = title;
@@ -77,12 +81,17 @@ public class FinishedQuest {
             return this;
         }
 
+        public Builder rewards(QuestRewards rewards) {
+            this.rewards = rewards;
+            return this;
+        }
+
         public void save(Consumer<FinishedQuest> consumer, ResourceLocation id) {
             consumer.accept(build(id));
         }
 
         private FinishedQuest build(ResourceLocation id) {
-            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions,type,criteria));
+            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions,type,criteria,rewards));
         }
     }
 

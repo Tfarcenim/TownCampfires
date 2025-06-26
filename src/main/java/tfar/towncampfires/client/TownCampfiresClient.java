@@ -70,8 +70,7 @@ public class TownCampfiresClient {
                 Pair<QuestCriteria<?>, Integer> questCriteriaIntegerPair = quest.criterias().get(j);
                 int needed= questCriteriaIntegerPair.getSecond();
                 Integer progress = questInstance.progress().isEmpty() ? 0 : questInstance.progress().get(j);
-                if (progress == null) progress = 0;
-                font.draw(poseStack,Component.literal(questCriteriaIntegerPair.getFirst().toString() +" "+progress+"/"+needed),5, startY + i * 20 + 10, 0xffffff);
+                font.draw(poseStack,questCriteriaIntegerPair.getFirst().desc().copy().append(" "+progress+"/"+needed),5, startY + i * 20 + 10, 0xffffff);
             }
         }
     };

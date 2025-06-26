@@ -2,6 +2,7 @@ package tfar.towncampfires.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiComponent;
@@ -16,11 +17,12 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import org.lwjgl.glfw.GLFW;
-import tfar.towncampfires.data.CampfireEffect;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.config.TownCampfireConfig;
+import tfar.towncampfires.data.CampfireEffect;
 import tfar.towncampfires.data.quest.Quest;
+import tfar.towncampfires.data.quest.QuestCriteria;
 import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
@@ -88,7 +90,7 @@ public class TownCampfireScreen extends Screen {
             Tab tab = values[i];
             int xPos = leftPos + i * tabWidth;
             TabButton tabButton = new TabButton(xPos,topPos,tabWidth,TAB_HEIGHT+4,Component.literal(tab.name()),pButton -> switchToTab(tab),tab);
-            tabButton.setFGColor(0x404040);
+            tabButton.setFGColor(DARK_GRAY);
             addRenderableWidget(tabButton);
         }
 
@@ -172,6 +174,8 @@ public class TownCampfireScreen extends Screen {
         this.toolTip = pToolTip;
     }
 
+    public static final int DARK_GRAY = 0x404040;
+
     @Override
     public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
         this.toolTip = null;
@@ -191,30 +195,30 @@ public class TownCampfireScreen extends Screen {
                 int y = 22;
                 int h = 15;
                 font.draw(pPoseStack,Component.literal("Villagers: "+townCampfire.getEffectiveVillagers()+"/"+townCampfire.getMaxVillagers()),
-                        leftPos+8,topPos+TAB_HEIGHT+y,0x404040);
+                        leftPos+8,topPos+TAB_HEIGHT+y,DARK_GRAY);
                 font.draw(pPoseStack,Component.literal("Blocks Allowed: "+townCampfire.getUsedBlocks()+"/"+townCampfire.getAllowedBlocks()),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h,0x404040);
+                        leftPos+8,topPos+TAB_HEIGHT+y + h,DARK_GRAY);
 
                 font.draw(pPoseStack,Component.literal("Work Bench Limit: "+townCampfire.getUsedWorkbenches()+"/"+townCampfire.getAllowedWorkbenches()),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h*2,0x404040);
+                        leftPos+8,topPos+TAB_HEIGHT+y + h*2,DARK_GRAY);
 
                 font.draw(pPoseStack,Component.literal("Quests Available: "+questCount+"/"+questCount),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h*3,0x404040);
+                        leftPos+8,topPos+TAB_HEIGHT+y + h*3,DARK_GRAY);
 
                 font.draw(pPoseStack,Component.literal("Refresh: "+TownCampfire.timeUntilRefresh(minecraft.level.getGameTime())),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h*4,0x404040);
+                        leftPos+8,topPos+TAB_HEIGHT+y + h*4,DARK_GRAY);
 
                 font.draw(pPoseStack,Component.literal("Raid Chance: "+"TODO"),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h*5,0x404040);
+                        leftPos+8,topPos+TAB_HEIGHT+y + h*5,DARK_GRAY);
                 renderExperience(pPoseStack, pMouseX, pMouseY, pPartialTick);
 
                 font.draw(pPoseStack,Component.literal("Local Effects"),
-                        leftPos+imageWidth/2f + 32,topPos+TAB_HEIGHT+y,0x404040);
+                        leftPos+imageWidth/2f + 32,topPos+TAB_HEIGHT+y,DARK_GRAY);
             }
             case quest -> {
 
                 font.draw(pPoseStack,Component.literal("Quests: "+questCount+"/"+questCount),
-                        leftPos+8,topPos+TAB_HEIGHT+5,0x404040);
+                        leftPos+8,topPos+TAB_HEIGHT+5,DARK_GRAY);
 
                 QuestWidget.QuestEntry questEntry = questWidget.getSelected();
                 if (questEntry != null) {
@@ -230,7 +234,15 @@ public class TownCampfireScreen extends Screen {
                         FormattedCharSequence formattedCharSequence = seq.get(i);
                         font.draw(pPoseStack,formattedCharSequence,xStart + 1,yStart + 18 + 10 * i,0xffffff);
                     }
-                    font.draw(pPoseStack,Component.literal("Complete Conditions"),xStart,yStart+100,0xffffff);
+                    int completeY = 90;
+                    font.draw(pPoseStack,Component.literal("Complete Conditions"),xStart,yStart+completeY,DARK_GRAY);
+                    List<Pair<QuestCriteria<?>, Integer>> criterias = quest.criterias();
+                    for (int i = 0; i < criterias.size(); i++) {
+                        Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
+                        QuestCriteria<?> criteria = entry.getFirst();
+                        int count = entry.getSecond();
+                        font.draw(pPoseStack,criteria.desc().copy().append(" "+count),xStart,yStart + completeY +10 +  10 * i,0xffffff);
+                    }
 
                     font.draw(pPoseStack,Component.literal("Fail Conditions"),xStart,yStart+160,0xffffff);
                 }
@@ -262,12 +274,12 @@ public class TownCampfireScreen extends Screen {
         String level = "Level: "+townCampfire.getLevel();
 
         font.draw(pPoseStack,Component.literal(level),
-                leftPos+ imageWidth/2f - font.width(level)/2f,yPos- 15,0x404040);
+                leftPos+ imageWidth/2f - font.width(level)/2f,yPos- 15,DARK_GRAY);
 
         String progress = (experience%experiencePerLevel)+"/"+experiencePerLevel;
 
         font.draw(pPoseStack,Component.literal(progress),
-                leftPos+ imageWidth/2f - font.width(progress)/2f,yPos+ 10,0x404040);
+                leftPos+ imageWidth/2f - font.width(progress)/2f,yPos+ 10,DARK_GRAY);
 
     }
 
@@ -511,7 +523,7 @@ public class TownCampfireScreen extends Screen {
                                int mouseX, int mouseY, boolean isMouseOver, float partialTick)
             {
                 Font font = TownCampfireScreen.this.font;
-                font.draw(poseStack,effect.name(),left,top,0x404040);
+                font.draw(poseStack,effect.name(),left,top,DARK_GRAY);
 
                 if (isMouseOver) {
                     List<FormattedCharSequence> seq = effect.desc().stream().map(Component::getVisualOrderText).toList();

@@ -19,6 +19,7 @@
       "count": 5,
       "trigger": {
         "conditions": {},
+        "desc": "{\"text\":\"Kill Mobs\"}",
         "trigger": "minecraft:player_killed_entity"
       }
     }
@@ -30,5 +31,8 @@
     "Count": 1,
     "id": "minecraft:gold_ingot"
   },
-  "name": "{\"color\":\"yellow\",\"text\":\"Example Quest 2\"}"
+  "name": "{\"color\":\"yellow\",\"text\":\"Example Quest 2\"}",
+  "rewards": {
+    "experience": 1
+  }
 }

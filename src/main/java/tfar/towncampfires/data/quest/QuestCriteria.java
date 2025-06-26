@@ -10,6 +10,7 @@ import net.minecraft.advancements.CriterionTriggerInstance;
 import net.minecraft.advancements.critereon.DeserializationContext;
 import net.minecraft.advancements.critereon.SerializationContext;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 
@@ -20,14 +21,16 @@ public class QuestCriteria<T extends CriterionTriggerInstance> {
     @Nullable
     private final CriterionTrigger<T> trigger;
     private final T triggerInstance;
+    private final Component desc;
 
-    public QuestCriteria(CriterionTrigger<T> trigger, T triggerInstance) {
+    public QuestCriteria(CriterionTrigger<T> trigger, T triggerInstance, Component desc) {
         this.trigger = trigger;
         this.triggerInstance = triggerInstance;
+        this.desc = desc;
     }
 
-    public QuestCriteria() {
-        this(null,null);
+    public QuestCriteria(Component desc) {
+        this(null,null, desc);
     }
 
     public T triggerInstance() {
@@ -38,26 +41,33 @@ public class QuestCriteria<T extends CriterionTriggerInstance> {
         return trigger;
     }
 
+    public Component desc() {
+        return desc;
+    }
+
     public void serializeToNetwork(FriendlyByteBuf pBuffer) {
+        pBuffer.writeComponent(desc);
     }
 
     public static QuestCriteria<?> criterionFromJson(JsonObject pJson, DeserializationContext pContext) {
         ResourceLocation resourcelocation = new ResourceLocation(GsonHelper.getAsString(pJson, "trigger"));
         CriterionTrigger<?> criteriontrigger = CriteriaTriggers.getCriterion(resourcelocation);
+        Component component = Component.Serializer.fromJson(pJson.get("desc").getAsString());
         if (criteriontrigger == null) {
             throw new JsonSyntaxException("Invalid criterion trigger: " + resourcelocation);
         } else {
             CriterionTriggerInstance criteriontriggerinstance = criteriontrigger.createInstance(GsonHelper.getAsJsonObject(pJson, "conditions", new JsonObject()), pContext);
-            return new QuestCriteria(criteriontrigger,criteriontriggerinstance);
+            return new QuestCriteria(criteriontrigger,criteriontriggerinstance,component);
         }
     }
 
-    public static QuestCriteria criterionFromNetwork(FriendlyByteBuf p_11430_) {
-        return new QuestCriteria();
+    public static QuestCriteria<?> criterionFromNetwork(FriendlyByteBuf buf) {
+        Component desc = buf.readComponent();
+        return new QuestCriteria<>(desc);
     }
 
-    public static Map<String, QuestCriteria> criteriaFromJson(JsonObject pJson, DeserializationContext pContext) {
-        Map<String, QuestCriteria> map = Maps.newHashMap();
+    public static Map<String, QuestCriteria<?>> criteriaFromJson(JsonObject pJson, DeserializationContext pContext) {
+        Map<String, QuestCriteria<?>> map = Maps.newHashMap();
 
         for(Map.Entry<String, JsonElement> entry : pJson.entrySet()) {
             map.put(entry.getKey(), criterionFromJson(GsonHelper.convertToJsonObject(entry.getValue(), "criterion"), pContext));
@@ -66,11 +76,11 @@ public class QuestCriteria<T extends CriterionTriggerInstance> {
         return map;
     }
 
-    public static Map<String, QuestCriteria> criteriaFromNetwork(FriendlyByteBuf pBuffer) {
+    public static Map<String, QuestCriteria<?>> criteriaFromNetwork(FriendlyByteBuf pBuffer) {
         return pBuffer.readMap(FriendlyByteBuf::readUtf, QuestCriteria::criterionFromNetwork);
     }
 
-    public static void serializeToNetwork(Map<String, QuestCriteria> pCriteria, FriendlyByteBuf pBuffer) {
+    public static void serializeToNetwork(Map<String, QuestCriteria<?>> pCriteria, FriendlyByteBuf pBuffer) {
         pBuffer.writeMap(pCriteria, FriendlyByteBuf::writeUtf, (p_145258_, p_145259_) -> {
             p_145259_.serializeToNetwork(p_145258_);
         });
@@ -86,6 +96,8 @@ public class QuestCriteria<T extends CriterionTriggerInstance> {
             if (jsonobject1.size() != 0) {
                 jsonobject.add("conditions", jsonobject1);
             }
+
+            jsonobject.addProperty("desc",Component.Serializer.toJson(desc));
 
             return jsonobject;
         }

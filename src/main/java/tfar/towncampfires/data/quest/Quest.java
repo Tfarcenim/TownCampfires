@@ -3,6 +3,7 @@ package tfar.towncampfires.data.quest;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.advancements.critereon.DeserializationContext;
@@ -25,15 +26,17 @@ public final class Quest {
     private final QuestAppearanceConditions appearanceConditions;
     private final Type type;
     private final List<Pair<QuestCriteria<?>, Integer>> criterias;
+    private final QuestRewards rewards;
 
     public Quest(Component name, ItemStack icon, List<Component> desc,
-                 QuestAppearanceConditions appearanceConditions, Type type, List<Pair<QuestCriteria<?>, Integer>> criterias) {
+                 QuestAppearanceConditions appearanceConditions, Type type, List<Pair<QuestCriteria<?>, Integer>> criterias,QuestRewards rewards) {
         this.name = name;
         this.icon = icon;
         this.desc = desc;
         this.appearanceConditions = appearanceConditions;
         this.type = type;
         this.criterias = criterias;
+        this.rewards = rewards;
     }
 
     //.encodeStart(JsonOps.INSTANCE, quest).resultOrPartial(TownCampfires.LOGGER::error).get().getAsJsonObject();
@@ -75,6 +78,8 @@ public final class Quest {
 
         jsonObject.add("criteria",jsonArray);
 
+        jsonObject.add("rewards",rewards.serializeToJson());
+
         return jsonObject;
     }
 
@@ -98,6 +103,8 @@ public final class Quest {
 
         JsonArray jsonArray = object.getAsJsonArray("criteria");
 
+        if (jsonArray.isEmpty()) throw new JsonParseException("Quest must have criteria!");
+
         List<Pair<QuestCriteria<?>,Integer>> criterias = new ArrayList<>(jsonArray.size());
 
         for (JsonElement element : jsonArray) {
@@ -107,7 +114,9 @@ public final class Quest {
             criterias.add(Pair.of(questCriteria,count));
         }
 
-        return new Quest(name,icon,desc,appearance_conditions,type,criterias);
+        QuestRewards rewards = QuestRewards.deserialize(object.get("rewards").getAsJsonObject());
+
+        return new Quest(name,icon,desc,appearance_conditions,type,criterias,rewards);
     }
 
     public void toPacket(FriendlyByteBuf buf) {
@@ -125,7 +134,7 @@ public final class Quest {
     public static Quest fromPacket(FriendlyByteBuf buf) {
         return new Quest(buf.readComponent(), buf.readItem(), buf.readList(FriendlyByteBuf::readComponent),
                 QuestAppearanceConditions.fromPacket(buf), buf.readEnum(Type.class),
-                buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())));
+                buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())),QuestRewards.readFromPacket(buf));
     }
 
     public Component name() {

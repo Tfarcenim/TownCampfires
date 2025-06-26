@@ -99,6 +99,7 @@ public class QuestInstance {
         CompoundTag tag = new CompoundTag();
         tag.putString("quest",questID.toString());
         tag.putString("leader",leader.toString());
+        tag.putBoolean("active",active);
         ListTag listTag = new ListTag();
         for (UUID uuid : members) {
             listTag.add(StringTag.valueOf(uuid.toString()));
@@ -115,6 +116,7 @@ public class QuestInstance {
         for (Tag tag1 : listTag) {
             questInstance.addPlayer(UUID.fromString(tag1.getAsString()));
         }
+        questInstance.setActive(tag.getBoolean("active"));
         return questInstance;
     }
 
