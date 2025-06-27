@@ -32,4 +32,10 @@ public class Utils {
         }
         return sampled;
     }
+
+    public static <E extends Enum<E>> E cycle(E e) {
+        E[] values = (E[]) e.getClass().getEnumConstants();
+        return values[(e.ordinal() + 1) % values.length];
+    }
+
 }

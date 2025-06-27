@@ -3,12 +3,13 @@ package tfar.towncampfires;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.Dynamic;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
-import net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance;
-import net.minecraft.advancements.critereon.SimpleCriterionTrigger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
-import net.minecraft.nbt.*;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.NbtOps;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -26,17 +27,12 @@ import net.minecraft.world.phys.AABB;
 import tfar.towncampfires.config.RandomIntegerRange;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.data.CampfireEffect;
-import tfar.towncampfires.data.quest.Quest;
-import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.network.ForgePacketHandler;
-import tfar.towncampfires.network.client.S2CQuestInstancePacket;
 import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.utils.MiscCodecs;
 import tfar.towncampfires.utils.Utils;
 
-import javax.annotation.Nullable;
 import java.util.*;
-import java.util.function.Predicate;
 
 public final class TownCampfire {
     public static final Codec<TownCampfire> CODEC = RecordCodecBuilder.create(
@@ -63,9 +59,6 @@ public final class TownCampfire {
 
     private final int startingQuestCount;
 
-    List<QuestInstance> currentQuests = new ArrayList<>();
-
-    private Runnable markDirty;
 
     boolean resync;
 
@@ -80,17 +73,21 @@ public final class TownCampfire {
         removeInvalidEffects();
     }
 
+    public TownCampfire constructForPlayer(ServerPlayer player, CampfireLevelData campfireLevelData) {
+
+        List<ResourceLocation> quests = new ArrayList<>(this.quests);
+
+        quests.removeIf(resourceLocation -> campfireLevelData.completedQuests.getOrDefault(player.getUUID(),Set.of()).contains(resourceLocation));
+
+        TownCampfire townCampfire = new TownCampfire(location,name,experience,usedBlocks,usedWorkbenches,quests,startingQuestCount);
+
+        return townCampfire;
+    }
+
     public static TownCampfire load(CompoundTag tag,CampfireLevelData data) {
         TownCampfire townCampfire = TownCampfire.CODEC
                 .parse(new Dynamic<>(NbtOps.INSTANCE, tag)).resultOrPartial(TownCampfires.LOGGER::error).orElseThrow();
 
-        townCampfire.markDirty = data::setDirty;
-
-        ListTag currentQuests = tag.getList("current_quests", CompoundTag.TAG_COMPOUND);
-        for (Tag t : currentQuests) {
-            QuestInstance questInstance = QuestInstance.load(townCampfire,(CompoundTag) t);
-            townCampfire.currentQuests.add(questInstance);
-        }
 
         ListTag activeEffects = tag.getList("active_effects",Tag.TAG_STRING);
         List<ResourceLocation> effe = new ArrayList<>();
@@ -106,19 +103,13 @@ public final class TownCampfire {
 
     public CompoundTag save() {
         CompoundTag tag = (CompoundTag) TownCampfire.CODEC.encodeStart(NbtOps.INSTANCE,this).resultOrPartial(TownCampfires.LOGGER::error).orElseThrow();
-        ListTag currentQuests = new ListTag();
-        for (QuestInstance questInstance : this.currentQuests) {
-            currentQuests.add(questInstance.save());
-        }
-        tag.put("current_quests",currentQuests);
         return tag;
     }
 
     public static TownCampfire fromPacket(BlockPos location, Component name, long experience, int currentVillagers, int usedBlocks, int usedWorkbenches,
-                                          List<ResourceLocation> effects, List<ResourceLocation> quests, int startingQuestCount, List<QuestInstance> activeQuests) {
+                                          List<ResourceLocation> effects, List<ResourceLocation> quests, int startingQuestCount) {
         TownCampfire townCampfire = new TownCampfire(location, name,experience,usedBlocks,usedWorkbenches,quests,startingQuestCount);
         townCampfire.currentVillagers = currentVillagers;
-        townCampfire.currentQuests.addAll(activeQuests);
         townCampfire.effects.addAll(effects);
         return townCampfire;
     }
@@ -134,7 +125,6 @@ public final class TownCampfire {
         buf.writeCollection(effects,FriendlyByteBuf::writeResourceLocation);
         buf.writeCollection(quests,FriendlyByteBuf::writeResourceLocation);
         buf.writeInt(startingQuestCount);
-        buf.writeCollection(currentQuests,(buf1, questInstance) -> questInstance.toPacket(buf1));
     }
 
     public static TownCampfire fromPacket(FriendlyByteBuf buf) {
@@ -150,21 +140,9 @@ public final class TownCampfire {
 
         int startingQuestCount = buf.readInt();
 
-        List<QuestInstance> activeQuests = buf.readList(QuestInstance::fromPacket);
-
-
-
-        return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches,resourceLocations,questIds,startingQuestCount,activeQuests);
+        return fromPacket(location, name,experience,currentVillagers,usedBlocks,usedWorkbenches,resourceLocations,questIds,startingQuestCount);
     }
 
-    public<T extends AbstractCriterionTriggerInstance> void
-    checkQuests(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
-        for (QuestInstance questInstance : currentQuests) {
-            if (questInstance.isActive()) {
-                questInstance.check(trigger,pPlayer,pTestTrigger);
-            }
-        }
-    }
 
     void removeInvalidEffects() {
         effects.removeIf(location1 -> !TownCampfires.campfireEffectLoader.getCampfireEffects().containsKey(location1));
@@ -362,7 +340,7 @@ public final class TownCampfire {
     }
 
 
-    public void update(ServerLevel pLevel) {
+    public void update(ServerLevel pLevel,boolean refresh) {
         double radius = getRadius();
         boolean loaded = isLoaded(pLevel);
 
@@ -381,7 +359,7 @@ public final class TownCampfire {
             }
         }
 
-        if (pLevel.getGameTime() % TownCampfireConfig.CONFIG.refresh_timer.get() == 0) {
+        if(refresh) {
             refresh(pLevel);
         }
 
@@ -396,72 +374,5 @@ public final class TownCampfire {
                 resync = false;
             }
         }
-    }
-
-    public void startQuest(ServerPlayer player,ResourceLocation questID) {
-        if (!quests.contains(questID)) {
-            TownCampfires.LOGGER.warn("{} Attempted to start nonexistent quest {}",player,questID);
-        } else {
-            Quest quest = TownCampfires.questLoader.getQuestMap().get(questID);
-            QuestInstance existing = findExistingQuest(quest,player);
-            if (existing == null) {//make a new quest instance
-                switch (quest.type()) {
-                    case normal,level -> {
-                        QuestInstance questInstance = new QuestInstance(this,questID,player.getUUID());
-                        currentQuests.add(questInstance);
-                        questInstance.setActive(true);
-                        sendQuestsTo(player);
-                        markDirty.run();
-                    }
-                    case preparation_solo, preparation_all -> {
-                        //check for other existing instances first!
-                        boolean wasAdded = false;
-                        for (QuestInstance questInstance : this.currentQuests) {
-                            Quest quest1 = questInstance.quest();
-                            if (quest1 == quest && !questInstance.hasPlayer(player)) {
-                                questInstance.addPlayer(player);
-                                wasAdded = true;
-                                markDirty.run();
-                                break;
-                            }
-                        }
-
-                        if (!wasAdded) {
-                            QuestInstance questInstance = new QuestInstance(this,questID,player.getUUID());
-                            currentQuests.add(questInstance);
-                            markDirty.run();
-                        }
-                    }
-                }
-            } else {
-                switch (quest.type()) {
-                    case normal -> {
-
-                    }
-                    case preparation_solo -> {
-                        existing.setActive(true);
-                    }
-                    case preparation_all -> {
-                        existing.setActive(true);
-                    }
-                    case level -> {
-                    }
-                }
-            }
-        }
-    }
-
-    public void sendQuestsTo(ServerPlayer player) {
-        ForgePacketHandler.sendToClient(new S2CQuestInstancePacket(currentQuests),player);
-    }
-
-    @Nullable public QuestInstance findExistingQuest(Quest quest,ServerPlayer player) {
-        for (QuestInstance questInstance : this.currentQuests) {
-            Quest quest1 = questInstance.quest();
-            if (quest1 == quest && questInstance.isLeader(player)) {
-                return questInstance;
-            }
-        }
-        return null;
     }
 }

@@ -15,7 +15,7 @@ public record S2CQuestPacket(Map<ResourceLocation, Quest> effects) implements S2
 
     @Override
     public void handleClient() {
-        TownCampfiresClient.questLoader.setFromServer(effects);
+        TownCampfiresClient.handle(this);
     }
 
     @Override

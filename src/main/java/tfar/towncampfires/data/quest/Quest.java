@@ -16,28 +16,10 @@ import tfar.towncampfires.utils.MiscCodecs;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 
-public final class Quest {
-
-    private final Component name;
-    private final ItemStack icon;
-    private final List<Component> desc;
-    private final QuestAppearanceConditions appearanceConditions;
-    private final Type type;
-    private final List<Pair<QuestCriteria<?>, Integer>> criterias;
-    private final QuestRewards rewards;
-
-    public Quest(Component name, ItemStack icon, List<Component> desc,
-                 QuestAppearanceConditions appearanceConditions, Type type, List<Pair<QuestCriteria<?>, Integer>> criterias,QuestRewards rewards) {
-        this.name = name;
-        this.icon = icon;
-        this.desc = desc;
-        this.appearanceConditions = appearanceConditions;
-        this.type = type;
-        this.criterias = criterias;
-        this.rewards = rewards;
-    }
+public record Quest(Component name, ItemStack icon, List<Component> desc,
+                    QuestAppearanceConditions appearanceConditions, tfar.towncampfires.data.quest.Quest.Type type,
+                    List<Pair<QuestCriteria<?>, Integer>> criterias, QuestRewards rewards) {
 
     //.encodeStart(JsonOps.INSTANCE, quest).resultOrPartial(TownCampfires.LOGGER::error).get().getAsJsonObject();
 
@@ -69,16 +51,16 @@ public final class Quest {
 
         JsonArray jsonArray = new JsonArray(criterias().size());
 
-        for (Pair<QuestCriteria<?>,Integer> criteria : criterias) {
+        for (Pair<QuestCriteria<?>, Integer> criteria : criterias) {
             JsonObject o = new JsonObject();
-            o.add("trigger",criteria.getFirst().serializeToJson());
-            o.addProperty("count",criteria.getSecond());
+            o.add("trigger", criteria.getFirst().serializeToJson());
+            o.addProperty("count", criteria.getSecond());
             jsonArray.add(o);
         }
 
-        jsonObject.add("criteria",jsonArray);
+        jsonObject.add("criteria", jsonArray);
 
-        jsonObject.add("rewards",rewards.serializeToJson());
+        jsonObject.add("rewards", rewards.serializeToJson());
 
         return jsonObject;
     }
@@ -86,37 +68,37 @@ public final class Quest {
     //Quest.CODEC.decode(JsonOps.INSTANCE, pJson).resultOrPartial(LOGGER::error).orElseThrow().getFirst()
 
     public static Quest read(JsonObject object, DeserializationContext context) {
-        Component name = MiscCodecs.COMPONENT_CODEC.decode(JsonOps.INSTANCE,object.get("name"))
+        Component name = MiscCodecs.COMPONENT_CODEC.decode(JsonOps.INSTANCE, object.get("name"))
                 .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
 
-        ItemStack icon =ItemStack.CODEC.decode(JsonOps.INSTANCE,object.get("icon"))
+        ItemStack icon = ItemStack.CODEC.decode(JsonOps.INSTANCE, object.get("icon"))
                 .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
 
-        List<Component> desc = MiscCodecs.COMPONENT_CODEC.listOf().decode(JsonOps.INSTANCE,object.get("desc"))
+        List<Component> desc = MiscCodecs.COMPONENT_CODEC.listOf().decode(JsonOps.INSTANCE, object.get("desc"))
                 .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
 
-        QuestAppearanceConditions appearance_conditions = QuestAppearanceConditions.CODEC.decode(JsonOps.INSTANCE,object.get("appearance_conditions"))
+        QuestAppearanceConditions appearance_conditions = QuestAppearanceConditions.CODEC.decode(JsonOps.INSTANCE, object.get("appearance_conditions"))
                 .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
 
-        Type type = MiscCodecs.enumCodec(Type.class).decode(JsonOps.INSTANCE,object.get("type"))
+        Type type = MiscCodecs.enumCodec(Type.class).decode(JsonOps.INSTANCE, object.get("type"))
                 .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
 
         JsonArray jsonArray = object.getAsJsonArray("criteria");
 
         if (jsonArray.isEmpty()) throw new JsonParseException("Quest must have criteria!");
 
-        List<Pair<QuestCriteria<?>,Integer>> criterias = new ArrayList<>(jsonArray.size());
+        List<Pair<QuestCriteria<?>, Integer>> criterias = new ArrayList<>(jsonArray.size());
 
         for (JsonElement element : jsonArray) {
             JsonObject o = element.getAsJsonObject();
-            QuestCriteria<?> questCriteria = QuestCriteria.criterionFromJson(o.get("trigger").getAsJsonObject(),context);
-            int count = GsonHelper.getAsInt(o,"count",1);
-            criterias.add(Pair.of(questCriteria,count));
+            QuestCriteria<?> questCriteria = QuestCriteria.criterionFromJson(o.get("trigger").getAsJsonObject(), context);
+            int count = GsonHelper.getAsInt(o, "count", 1);
+            criterias.add(Pair.of(questCriteria, count));
         }
 
         QuestRewards rewards = QuestRewards.deserialize(object.get("rewards").getAsJsonObject());
 
-        return new Quest(name,icon,desc,appearance_conditions,type,criterias,rewards);
+        return new Quest(name, icon, desc, appearance_conditions, type, criterias, rewards);
     }
 
     public void toPacket(FriendlyByteBuf buf) {
@@ -125,7 +107,7 @@ public final class Quest {
         buf.writeCollection(desc, FriendlyByteBuf::writeComponent);
         appearanceConditions.toPacket(buf);
         buf.writeEnum(type);
-        buf.writeCollection(criterias,(buf1, questCriteriaIntegerPair) -> {
+        buf.writeCollection(criterias, (buf1, questCriteriaIntegerPair) -> {
             questCriteriaIntegerPair.getFirst().serializeToNetwork(buf1);
             buf1.writeInt(questCriteriaIntegerPair.getSecond());
         });
@@ -134,62 +116,8 @@ public final class Quest {
     public static Quest fromPacket(FriendlyByteBuf buf) {
         return new Quest(buf.readComponent(), buf.readItem(), buf.readList(FriendlyByteBuf::readComponent),
                 QuestAppearanceConditions.fromPacket(buf), buf.readEnum(Type.class),
-                buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())),QuestRewards.readFromPacket(buf));
+                buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())), QuestRewards.readFromPacket(buf));
     }
-
-    public Component name() {
-        return name;
-    }
-
-    public ItemStack icon() {
-        return icon;
-    }
-
-    public List<Component> desc() {
-        return desc;
-    }
-
-    public QuestAppearanceConditions appearanceConditions() {
-        return appearanceConditions;
-    }
-
-    public Type type() {
-        return type;
-    }
-
-    public List<Pair<QuestCriteria<?>, Integer>> criterias() {
-        return criterias;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (Quest) obj;
-        return Objects.equals(this.name, that.name) &&
-                Objects.equals(this.icon, that.icon) &&
-                Objects.equals(this.desc, that.desc) &&
-                Objects.equals(this.appearanceConditions, that.appearanceConditions) &&
-                Objects.equals(this.type, that.type) &&
-                Objects.equals(this.criterias, that.criterias);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(name, icon, desc, appearanceConditions, type, criterias);
-    }
-
-    @Override
-    public String toString() {
-        return "Quest[" +
-                "name=" + name + ", " +
-                "icon=" + icon + ", " +
-                "desc=" + desc + ", " +
-                "appearanceConditions=" + appearanceConditions + ", " +
-                "type=" + type + ", " +
-                "criterias=" + criterias + ']';
-    }
-
 
     // Quest Type: normal, preparation solo, preparation all or level.
     public enum Type {

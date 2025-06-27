@@ -16,6 +16,8 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraftforge.client.gui.widget.ExtendedButton;
+import net.minecraftforge.common.UsernameCache;
 import org.lwjgl.glfw.GLFW;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
@@ -27,11 +29,11 @@ import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
-import tfar.towncampfires.network.server.C2STownCampfireStartQuestPacket;
+import tfar.towncampfires.network.server.C2STownCampfireQuestPacket;
+import tfar.towncampfires.utils.Utils;
 
 import javax.annotation.Nullable;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
@@ -57,6 +59,11 @@ public class TownCampfireScreen extends Screen {
         name.setValue(townCampfire.name().getString());
         campfireEffectWidget.refreshList();
         questWidget.refreshList();
+
+    }
+
+    public void updateQuests() {
+        activeQuestWidget.refreshList();
     }
 
     public enum Tab {
@@ -72,8 +79,13 @@ public class TownCampfireScreen extends Screen {
 
     protected CampfireEffectWidget campfireEffectWidget;
     protected QuestWidget questWidget;
+    protected ActiveQuestWidget activeQuestWidget;
 
     protected Button startQuest;
+
+    protected Button finishQuest;
+
+    protected Button questTabSwitch;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -105,11 +117,18 @@ public class TownCampfireScreen extends Screen {
         this.addRenderableWidget(campfireEffectWidget);
 
         int questHeight = 240;
-        questWidget = new QuestWidget(minecraft,imageWidth / 2,questHeight,topPos+TAB_HEIGHT+15,topPos+questHeight -10,50);
+        questWidget = new QuestWidget(minecraft,imageWidth / 2,questHeight,topPos+TAB_HEIGHT+20,topPos+questHeight -10,50);
         questWidget.setLeftPos(leftPos+5);
         questWidget.setRenderTopAndBottom(false);
         //campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(questWidget);
+
+        activeQuestWidget = new ActiveQuestWidget(minecraft,imageWidth / 2,questHeight,topPos+TAB_HEIGHT+20,topPos+questHeight -10,50);
+        activeQuestWidget.setLeftPos(leftPos+5);
+        activeQuestWidget.setRenderTopAndBottom(false);
+        //campfireEffectWidget.setRenderBackground(false);
+        this.addRenderableWidget(activeQuestWidget);
+
 
         initEditBox();
 
@@ -130,14 +149,36 @@ public class TownCampfireScreen extends Screen {
         startQuest = new Button(leftPos + imageWidth/2+16,topPos+imageHeight - 25,60,20,Component.literal("Start Quest"),b -> pressStart());
         addRenderableWidget(startQuest);
 
+        finishQuest = new Button(leftPos + imageWidth/2+16,topPos+imageHeight - 25,60,20,Component.literal("Finish"),b -> pressFinish());
+        addRenderableWidget(finishQuest);
+
+        questTabSwitch = new ExtendedButton(leftPos + 70,topPos+23,66,16,Component.literal("Available"),
+                b -> toggleQuestTab());
+        addRenderableWidget(questTabSwitch);
+
         switchToTab(current);
     }
 
     void pressStart() {
         QuestWidget.QuestEntry selected = questWidget.getSelected();
         if (selected != null) {
-            ForgePacketHandler.sendToServer(new C2STownCampfireStartQuestPacket(TownCampfiresClient.questLoader.lookup(selected.quest),townCampfire.location()));
+            ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(TownCampfiresClient.clientLookup(selected.quest),townCampfire.location(), C2STownCampfireQuestPacket.Type.START));
+            startQuest.active = false;
         }
+    }
+
+    void pressFinish() {
+        ActiveQuestWidget.ActiveQuestEntry selected = activeQuestWidget.getSelected();
+        if (selected != null) {
+            ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(TownCampfiresClient.clientLookup(selected.questInstance.quest()),
+                    townCampfire.location(), C2STownCampfireQuestPacket.Type.FINISH));
+            finishQuest.active = false;
+        }
+    }
+
+    void toggleQuestTab() {
+        questTab = Utils.cycle(questTab);
+        handleQuestTabs(current == Tab.quest);
     }
 
     void initEditBox() {
@@ -220,31 +261,87 @@ public class TownCampfireScreen extends Screen {
                 font.draw(pPoseStack,Component.literal("Quests: "+questCount+"/"+questCount),
                         leftPos+8,topPos+TAB_HEIGHT+5,DARK_GRAY);
 
-                QuestWidget.QuestEntry questEntry = questWidget.getSelected();
-                if (questEntry != null) {
-                    Quest quest = questEntry.quest;
-                    int xStart = leftPos + imageWidth/2 + 12;
-                    int yStart = topPos+TAB_HEIGHT+4;
-                    itemRenderer.renderAndDecorateFakeItem(quest.icon(),xStart,yStart);
 
-                    font.draw(pPoseStack, quest.name(),xStart+20,yStart,0xffffff);
+                int spacing = 12;
 
-                    List<FormattedCharSequence> seq = quest.desc().stream().map(Component::getVisualOrderText).toList();
-                    for (int i = 0; i < seq.size();i++) {
-                        FormattedCharSequence formattedCharSequence = seq.get(i);
-                        font.draw(pPoseStack,formattedCharSequence,xStart + 1,yStart + 18 + 10 * i,0xffffff);
+                switch (questTab) {
+                    case CURRENT -> {
+                        ActiveQuestWidget.ActiveQuestEntry questEntry = activeQuestWidget.getSelected();
+                        if (questEntry != null) {
+                            QuestInstance questInstance = questEntry.questInstance;
+                            Quest quest = questInstance.quest();
+                            int xStart = leftPos + imageWidth/2 + 12;
+                            int yStart = topPos+TAB_HEIGHT+4;
+
+                            int yLine = 0;
+                            itemRenderer.renderAndDecorateFakeItem(quest.icon(),xStart,yStart);
+
+                            font.draw(pPoseStack, quest.name(),xStart+20,yStart,0xffffff);
+
+                            List<FormattedCharSequence> seq = quest.desc().stream().map(Component::getVisualOrderText).toList();
+                            for (int i = 0; i < seq.size();i++) {
+                                FormattedCharSequence formattedCharSequence = seq.get(i);
+                                font.draw(pPoseStack,formattedCharSequence,xStart + 1,yStart + 18 + spacing * i,0xffffff);
+                            }
+                            int completeY = 90;
+                            font.draw(pPoseStack,Component.literal("Progress"),xStart,yStart+completeY,DARK_GRAY);
+                            List<Pair<QuestCriteria<?>, Integer>> criterias = questInstance.quest().criterias();
+                            for (int i = 0; i < criterias.size(); i++) {
+                                Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
+                                QuestCriteria<?> criteria = entry.getFirst();
+                                int count = entry.getSecond();
+
+                                Integer progress = questInstance.progress().isEmpty() ? 0 : questInstance.progress().get(i);
+
+                                font.draw(pPoseStack,criteria.desc().copy().append(" "+progress+"/"+count),xStart,yStart + completeY +spacing +  spacing * i,0xffffff);
+                            }
+
+                            yLine = yStart+110+questInstance.quest().criterias().size()*spacing;
+
+                            font.draw(pPoseStack,Component.literal("Members"),xStart,yLine,DARK_GRAY);
+
+                            yLine+=spacing;
+
+                            font.draw(pPoseStack,UsernameCache.getLastKnownUsername(questInstance.leader()),xStart,yLine,DARK_GRAY);
+
+                            yLine+=spacing;
+
+                            for (UUID uuid: questInstance.getMembers()) {
+                                String name = UsernameCache.getLastKnownUsername(uuid);
+                                font.draw(pPoseStack,name,xStart,yLine,DARK_GRAY);
+                                yLine+= spacing;
+                            }
+                        }
                     }
-                    int completeY = 90;
-                    font.draw(pPoseStack,Component.literal("Complete Conditions"),xStart,yStart+completeY,DARK_GRAY);
-                    List<Pair<QuestCriteria<?>, Integer>> criterias = quest.criterias();
-                    for (int i = 0; i < criterias.size(); i++) {
-                        Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
-                        QuestCriteria<?> criteria = entry.getFirst();
-                        int count = entry.getSecond();
-                        font.draw(pPoseStack,criteria.desc().copy().append(" "+count),xStart,yStart + completeY +10 +  10 * i,0xffffff);
-                    }
 
-                    font.draw(pPoseStack,Component.literal("Fail Conditions"),xStart,yStart+160,0xffffff);
+                    case AVAILABLE -> {
+                        QuestWidget.QuestEntry questEntry = questWidget.getSelected();
+                        if (questEntry != null) {
+                            Quest quest = questEntry.quest;
+                            int xStart = leftPos + imageWidth/2 + 12;
+                            int yStart = topPos+TAB_HEIGHT+4;
+                            itemRenderer.renderAndDecorateFakeItem(quest.icon(),xStart,yStart);
+
+                            font.draw(pPoseStack, quest.name(),xStart+20,yStart,0xffffff);
+
+                            List<FormattedCharSequence> seq = quest.desc().stream().map(Component::getVisualOrderText).toList();
+                            for (int i = 0; i < seq.size();i++) {
+                                FormattedCharSequence formattedCharSequence = seq.get(i);
+                                font.draw(pPoseStack,formattedCharSequence,xStart + 1,yStart + 18 + 10 * i,0xffffff);
+                            }
+                            int completeY = 90;
+                            font.draw(pPoseStack,Component.literal("Complete Conditions"),xStart,yStart+completeY,DARK_GRAY);
+                            List<Pair<QuestCriteria<?>, Integer>> criterias = quest.criterias();
+                            for (int i = 0; i < criterias.size(); i++) {
+                                Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
+                                QuestCriteria<?> criteria = entry.getFirst();
+                                int count = entry.getSecond();
+                                font.draw(pPoseStack,criteria.desc().copy().append(" "+count),xStart,yStart + completeY +10 +  10 * i,0xffffff);
+                            }
+
+                            font.draw(pPoseStack,Component.literal("Fail Conditions"),xStart,yStart+160,DARK_GRAY);
+                        }
+                    }
                 }
             }
         }
@@ -320,6 +417,12 @@ public class TownCampfireScreen extends Screen {
         }
     }
 
+    QuestTab questTab = QuestTab.AVAILABLE;
+
+    enum QuestTab {
+        AVAILABLE,CURRENT;
+    }
+
     protected void switchToTab(Tab tab) {
          current = tab;
 
@@ -329,14 +432,23 @@ public class TownCampfireScreen extends Screen {
          home.visible = bed.visible = gear.visible = status;
          campfireEffectWidget.setVisible(status);
 
+         questTabSwitch.visible = tab == Tab.quest;
          startQuest.visible = tab == Tab.quest && questWidget.getSelected() != null && isQuestAvailable(questWidget.getSelected().quest);
 
-         boolean quest = current == Tab.quest;
-         questWidget.setVisible(quest);
+         handleQuestTabs(current == Tab.quest);
+    }
+
+    protected void handleQuestTabs(boolean visible) {
+        questWidget.setVisible(visible && questTab == QuestTab.AVAILABLE);
+        activeQuestWidget.setVisible(visible && questTab == QuestTab.CURRENT);
+        questWidget.setSelected(null);
+        activeQuestWidget.setSelected(null);
+        finishQuest.visible = visible && questTab==QuestTab.CURRENT && activeQuestWidget.getSelected() != null;
+
     }
 
     public boolean isQuestAvailable(Quest quest) {
-        ResourceLocation questID = TownCampfiresClient.questLoader.lookup(quest);
+        ResourceLocation questID = TownCampfiresClient.clientLookup(quest);
         for (QuestInstance currentQuest : TownCampfiresClient.currentQuests) {
             ResourceLocation id = currentQuest.questID();
             if (Objects.equals(questID,id) && currentQuest.isActive()) {
@@ -600,8 +712,12 @@ public class TownCampfireScreen extends Screen {
 
             @Override
             public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
-                setSelected(this);
-                return true;
+                if (visible) {
+                    setSelected(this);
+                    return true;
+                }  else {
+                    return false;
+                }
             }
 
             @Override
@@ -634,6 +750,111 @@ public class TownCampfireScreen extends Screen {
 
             public Quest getQuest() {
                 return quest;
+            }
+        }
+    }
+
+    protected class ActiveQuestWidget extends ObjectSelectionList<ActiveQuestWidget.ActiveQuestEntry> {
+
+        boolean visible;
+
+        public ActiveQuestWidget(Minecraft pMinecraft, int pWidth, int pHeight, int pY0, int pY1, int pItemHeight) {
+            super(pMinecraft, pWidth, pHeight, pY0, pY1, pItemHeight);
+            refreshList();
+        }
+
+        @Override
+        public void setSelected(@org.jetbrains.annotations.Nullable ActiveQuestEntry pSelected) {
+            super.setSelected(pSelected);
+            if (pSelected != null) {
+                finishQuest.visible = true;
+                finishQuest.active = pSelected.questInstance.isFinished();
+            }
+        }
+
+        @Override
+        public void replaceEntries(Collection<ActiveQuestEntry> pEntries) {
+            super.replaceEntries(pEntries);
+        }
+
+        @Override
+        public int getRowWidth() {
+            return width;
+        }
+
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
+
+        public void refreshList() {
+            this.clearEntries();
+            for (QuestInstance questInstance : TownCampfiresClient.currentQuests){
+                addEntry(new ActiveQuestEntry(questInstance));
+            }
+        }
+
+        @Override
+        public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
+            if (visible) {
+                //left,bottom,right,top
+                GuiComponent.enableScissor(x0,y0,x1+10,y1);
+                super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+                GuiComponent.disableScissor();
+            }
+        }
+
+        @Override
+        protected int getScrollbarPosition() {
+            return x1;
+        }
+
+        public class ActiveQuestEntry extends ObjectSelectionList.Entry<ActiveQuestEntry> {
+            private final QuestInstance questInstance;
+
+            ActiveQuestEntry(QuestInstance info) {
+                this.questInstance = info;
+            }
+
+            @Override
+            public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+                if (visible) {
+                    setSelected(this);
+                    return true;
+                }  else {
+                    return false;
+                }
+            }
+
+            @Override
+            public Component getNarration() {
+                return Component.translatable("narrator.select", questInstance.quest().name());
+            }
+
+            @Override
+            public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
+                               int mouseX, int mouseY, boolean isMouseOver, float partialTick)
+            {
+                Font font = TownCampfireScreen.this.font;
+                itemRenderer.renderAndDecorateFakeItem(questInstance.quest().icon(),left,top);
+                font.draw(poseStack, questInstance.quest().name(),left+20,top,0xffffff);
+
+                List<FormattedCharSequence> seq = questInstance.quest().desc().stream().map(Component::getVisualOrderText).toList();
+                for (int i = 0; i < seq.size();i++) {
+                    FormattedCharSequence formattedCharSequence = seq.get(i);
+                    font.draw(poseStack,formattedCharSequence,left + 1,top + 18 + 10 * i,0xffffff);
+                }
+
+                //TownCampfireScreen.this.setToolTip(seq);
+
+                //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,
+                //    listWidth))), left + 3, top + 2, 0xFFFFFF);
+                //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(version, listWidth))),
+                //    left + 3, top + 2 + font.lineHeight, 0xCCCCCC);
+
+            }
+
+            public QuestInstance getQuestInstance() {
+                return questInstance;
             }
         }
     }

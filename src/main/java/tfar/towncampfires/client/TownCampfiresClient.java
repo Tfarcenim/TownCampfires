@@ -7,6 +7,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
@@ -19,14 +20,19 @@ import tfar.towncampfires.data.quest.QuestCriteria;
 import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.data.quest.QuestLoader;
 import tfar.towncampfires.init.ModBlocks;
+import tfar.towncampfires.network.client.S2CQuestPacket;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 public class TownCampfiresClient {
 
     public static CampfireEffectLoader campfireEffectLoader = new CampfireEffectLoader();
     public static QuestLoader questLoader = new QuestLoader(null);
+
+    public static Map<Quest, ResourceLocation> reverseLookup;
 
     static List<QuestInstance> currentQuests = new ArrayList<>();
 
@@ -60,7 +66,7 @@ public class TownCampfiresClient {
     }
 
     static IGuiOverlay overlay = (gui, poseStack, partialTick, screenWidth, screenHeight) -> {
-        int startY = 0;
+        int startY = 10;
         Font font = gui.getFont();
         for (int i = 0; i < currentQuests.size();i++) {
             QuestInstance questInstance = currentQuests.get(i);
@@ -77,5 +83,18 @@ public class TownCampfiresClient {
 
     public static void setQuests(List<QuestInstance> questInstanceList) {
         currentQuests = questInstanceList;
+        if (Minecraft.getInstance().screen instanceof TownCampfireScreen townCampfireScreen) {
+            townCampfireScreen.updateQuests();
+        }
+    }
+
+    public static void handle(S2CQuestPacket s2CQuestPacket) {
+        Map<ResourceLocation, Quest> effects = s2CQuestPacket.effects();
+        questLoader.setFromServer(effects);
+    }
+
+    public static ResourceLocation clientLookup(Quest quest) {
+        return questLoader.getQuestMap().keySet().stream()
+                .filter(e -> Objects.equals(questLoader.getQuestMap().get(e).name(), quest.name())).findFirst().orElse(null);
     }
 }

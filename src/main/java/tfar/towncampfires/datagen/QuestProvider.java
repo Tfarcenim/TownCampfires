@@ -31,16 +31,16 @@ public class QuestProvider implements DataProvider {
     @Override
     public void run(CachedOutput pOutput) {
         Set<ResourceLocation> set = Sets.newHashSet();
-        buildQuests(finishedCampfireEffect -> {
-            if (!set.add(finishedCampfireEffect.getId())) {
-                throw new IllegalStateException("Duplicate quest " + finishedCampfireEffect.getId());
+        buildQuests(finishedQuest -> {
+            if (!set.add(finishedQuest.getId())) {
+                throw new IllegalStateException("Duplicate quest " + finishedQuest.getId());
             } else {
-                saveCampfireEffect(pOutput, finishedCampfireEffect.serialize(), this.pathProvider.json(finishedCampfireEffect.getId()));
+                saveQuest(pOutput, finishedQuest.serialize(), this.pathProvider.json(finishedQuest.getId()));
             }
         });
     }
 
-    private static void saveCampfireEffect(CachedOutput pOutput, JsonObject json, Path pPath) {
+    private static void saveQuest(CachedOutput pOutput, JsonObject json, Path pPath) {
         try {
             DataProvider.saveStable(pOutput, json, pPath);
         } catch (IOException ioexception) {
@@ -50,30 +50,34 @@ public class QuestProvider implements DataProvider {
     }
 
     protected void buildQuests(Consumer<FinishedQuest> consumer) {
+        
+        int count = 2;
+        
         FinishedQuest.builder().title(Component.literal("Example Quest 0").withStyle(ChatFormatting.RED))
-                .desc(Component.literal("Example Quest 0 Description"))
+                .desc(Component.literal("Example Quest 0 Description").withStyle(ChatFormatting.DARK_GRAY))
                 .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(),
-                        Component.literal("Kill Mobs")),5)
+                        Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
                 .save(consumer, TownCampfires.id("example_quest_0"));
 
         FinishedQuest.builder().title(Component.literal("Example Quest 1").withStyle(ChatFormatting.GOLD))
-                .desc(Component.literal("Example Quest 1 Description"))
-                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs")),5)
+                .desc(Component.literal("Example Quest 1 Description").withStyle(ChatFormatting.DARK_GRAY))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
+                        KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
                 .save(consumer, TownCampfires.id("example_quest_1"));
 
         FinishedQuest.builder().title(Component.literal("Example Quest 2").withStyle(ChatFormatting.YELLOW))
-                .desc(Component.literal("Example Quest 2 Description"))
-                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs")),5)
+                .desc(Component.literal("Example Quest 2 Description").withStyle(ChatFormatting.DARK_GRAY))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
                 .save(consumer, TownCampfires.id("example_quest_2"));
 
         FinishedQuest.builder().title(Component.literal("Example Quest 3").withStyle(ChatFormatting.GREEN))
-                .desc(Component.literal("Example Quest 3 Description"))
-                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs")),5)
+                .desc(Component.literal("Example Quest 3 Description").withStyle(ChatFormatting.DARK_GRAY))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
                 .save(consumer, TownCampfires.id("example_quest_3"));
 
         FinishedQuest.builder().title(Component.literal("Example Quest 4").withStyle(ChatFormatting.BLUE))
-                .desc(Component.literal("Example Quest 4 Description"))
-                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs")),5)
+                .desc(Component.literal("Example Quest 4 Description").withStyle(ChatFormatting.DARK_GRAY))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
                 .save(consumer, TownCampfires.id("example_quest_4"));
 
     }

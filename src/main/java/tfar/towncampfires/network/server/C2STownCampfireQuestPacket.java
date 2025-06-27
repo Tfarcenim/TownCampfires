@@ -8,19 +8,22 @@ import tfar.towncampfires.CampfireLevelData;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
 
-public class C2STownCampfireStartQuestPacket implements C2SModPacket {
+public class C2STownCampfireQuestPacket implements C2SModPacket {
 
     final ResourceLocation questID;
     final BlockPos pos;
+    Type type;
 
-    public C2STownCampfireStartQuestPacket(FriendlyByteBuf buf) {
+    public C2STownCampfireQuestPacket(FriendlyByteBuf buf) {
         questID = buf.readResourceLocation();
         pos = buf.readBlockPos();
+        type = buf.readEnum(Type.class);
     }
 
-    public C2STownCampfireStartQuestPacket(ResourceLocation questID, BlockPos pos) {
+    public C2STownCampfireQuestPacket(ResourceLocation questID, BlockPos pos,Type type) {
         this.questID = questID;
         this.pos = pos;
+        this.type = type;
     }
 
     @Override
@@ -28,7 +31,11 @@ public class C2STownCampfireStartQuestPacket implements C2SModPacket {
         CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(player.getLevel());
         TownCampfire townCampfire = campfireLevelData.byLocation(pos);
         if (townCampfire != null) {
-            townCampfire.startQuest(player,questID);
+            switch (type) {
+                case START -> campfireLevelData.startQuest(player,questID,townCampfire);
+                case FINISH -> campfireLevelData.finishQuest(player,questID);
+            }
+
         } else {
             TownCampfires.LOGGER.warn("Player {} attempted to access nonexistent campfire at {}",player,pos);
         }
@@ -38,7 +45,10 @@ public class C2STownCampfireStartQuestPacket implements C2SModPacket {
     public void write(FriendlyByteBuf to) {
         to.writeResourceLocation(questID);
         to.writeBlockPos(pos);
+        to.writeEnum(type);
     }
 
-
+    public enum Type {
+        START, FINISH;
+    }
 }

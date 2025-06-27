@@ -47,7 +47,7 @@ public class TownCampfireBlock extends CampfireBlock {
                 CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate((ServerLevel) pLevel);
                 TownCampfire townCampfire = campfireLevelData.byLocation(pPos);
                 campfireLevelData.markVisit((ServerPlayer) pPlayer,townCampfire);
-                ForgePacketHandler.sendToClient(new S2CTownCampfirePacket(townCampfire), (ServerPlayer) pPlayer);
+                ForgePacketHandler.sendToClient(new S2CTownCampfirePacket(townCampfire.constructForPlayer((ServerPlayer) pPlayer,campfireLevelData)), (ServerPlayer) pPlayer);
             }
             return InteractionResult.SUCCESS;
         }else {

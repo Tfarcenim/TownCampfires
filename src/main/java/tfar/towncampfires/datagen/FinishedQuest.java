@@ -44,7 +44,7 @@ public class FinishedQuest {
 
         List<Pair<QuestCriteria<?>,Integer>> criteria = new ArrayList<>();
 
-        QuestRewards rewards = new QuestRewards(1, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
+        QuestRewards rewards = new QuestRewards(100, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
 
         public Builder title(Component title) {
             this.title = title;

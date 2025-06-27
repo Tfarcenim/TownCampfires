@@ -20,6 +20,7 @@ import tfar.towncampfires.TownCampfire;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 public class QuestLoader extends SimpleJsonResourceReloadListener {
 
@@ -97,7 +98,7 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
 
     public ResourceLocation lookup(Quest quest) {
         return questMap.keySet().stream()
-                .filter(resourceLocationCampfireEffectEntry -> questMap.get(resourceLocationCampfireEffectEntry) == quest).findFirst().orElse(null);
+                .filter(e -> Objects.equals(questMap.get(e), quest)).findFirst().orElse(null);
     }
 
     public Quest fromJson(ResourceLocation id, JsonObject pJson) {

@@ -105,10 +105,7 @@ public class TownCampfires
         ServerPlayer player = (ServerPlayer) event.getEntity();
         CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(player.server.overworld());
         if (campfireLevelData != null) {
-            TownCampfire visited = campfireLevelData.getLastVisited(player.getUUID());
-            if (visited != null) {
-                visited.sendQuestsTo(player);
-            }
+                campfireLevelData.sendQuestsTo(player);
         }
     }
 
@@ -255,9 +252,7 @@ public class TownCampfires
     checkQuestCriterion(SimpleCriterionTrigger<T>trigger,ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
         CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(pPlayer.server.overworld());
         if (campfireLevelData != null) {
-            for (TownCampfire campfire : campfireLevelData.getCampfiresByIndex()) {
-                campfire.checkQuests(trigger,pPlayer,pTestTrigger);
-            }
+            campfireLevelData.checkQuests(trigger,pPlayer,pTestTrigger);
         }
     }
 

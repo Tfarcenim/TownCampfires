@@ -16,16 +16,16 @@
   },
   "criteria": [
     {
-      "count": 5,
+      "count": 2,
       "trigger": {
         "conditions": {},
-        "desc": "{\"text\":\"Kill Mobs\"}",
+        "desc": "{\"color\":\"dark_gray\",\"text\":\"Kill Mobs\"}",
         "trigger": "minecraft:player_killed_entity"
       }
     }
   ],
   "desc": [
-    "{\"text\":\"Example Quest 1 Description\"}"
+    "{\"color\":\"dark_gray\",\"text\":\"Example Quest 1 Description\"}"
   ],
   "icon": {
     "Count": 1,
@@ -33,6 +33,6 @@
   },
   "name": "{\"color\":\"gold\",\"text\":\"Example Quest 1\"}",
   "rewards": {
-    "experience": 1
+    "experience": 100
   }
 }
