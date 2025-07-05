@@ -243,7 +243,7 @@ public class TownCampfireScreen extends Screen {
                 font.draw(pPoseStack,Component.literal("Work Bench Limit: "+townCampfire.getUsedWorkbenches()+"/"+townCampfire.getAllowedWorkbenches()),
                         leftPos+8,topPos+TAB_HEIGHT+y + h*2,DARK_GRAY);
 
-                font.draw(pPoseStack,Component.literal("Quests Available: "+questCount+"/"+questCount),
+                font.draw(pPoseStack,Component.literal("Quests Available: "+questCount+"/"+townCampfire.getMaxQuests()),
                         leftPos+8,topPos+TAB_HEIGHT+y + h*3,DARK_GRAY);
 
                 font.draw(pPoseStack,Component.literal("Refresh: "+TownCampfire.timeUntilRefresh(minecraft.level.getGameTime())),
@@ -258,7 +258,7 @@ public class TownCampfireScreen extends Screen {
             }
             case quest -> {
 
-                font.draw(pPoseStack,Component.literal("Quests: "+questCount+"/"+questCount),
+                font.draw(pPoseStack,Component.literal("Quests: "+questCount+"/"+townCampfire.getMaxQuests()),
                         leftPos+8,topPos+TAB_HEIGHT+5,DARK_GRAY);
 
 
@@ -443,8 +443,8 @@ public class TownCampfireScreen extends Screen {
         activeQuestWidget.setVisible(visible && questTab == QuestTab.CURRENT);
         questWidget.setSelected(null);
         activeQuestWidget.setSelected(null);
+        startQuest.visible = visible && questTab==QuestTab.AVAILABLE && questWidget.getSelected() != null;
         finishQuest.visible = visible && questTab==QuestTab.CURRENT && activeQuestWidget.getSelected() != null;
-
     }
 
     public boolean isQuestAvailable(Quest quest) {

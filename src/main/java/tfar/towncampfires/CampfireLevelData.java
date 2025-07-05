@@ -154,7 +154,7 @@ public class CampfireLevelData extends SavedData {
         }
     }
 
-    public void finishQuest(ServerPlayer player, ResourceLocation questID) {
+    public void finishQuest(ServerPlayer player, ResourceLocation questID, TownCampfire townCampfire) {
         Quest quest = TownCampfires.questLoader.getQuestMap().get(questID);
         QuestInstance existing = findExistingQuest(quest, player);
         if (existing == null) {//make a new quest instance
@@ -162,7 +162,7 @@ public class CampfireLevelData extends SavedData {
         } else {
             if (existing.isActive() && existing.isFinished() && existing.hasPlayer(player)) {
                 QuestRewards questRewards = existing.quest().rewards();
-                questRewards.grant(player);
+                questRewards.grant(player,townCampfire,quest.type() == Quest.Type.level);
                 existing.removeMember(player);
                 if (existing.getMembers().isEmpty()) {
                     currentQuests.remove(existing);

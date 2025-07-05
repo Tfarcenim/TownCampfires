@@ -40,6 +40,8 @@ public class TownCampfireConfig {
 
         public final ConfigHelper.ConfigObject<IntegerRange> starting_quests;
 
+        public final ForgeConfigSpec.ConfigValue<List<? extends Integer>> levelup_walls;
+
         public Server(ForgeConfigSpec.Builder builder) {
             builder.push("town_campfire_stats");
             defaultNames = ConfigHelper.defineObject(builder,"default_campfire_names", MiscCodecs.COMPONENT_CODEC.listOf(),defaultCampfireNames());
@@ -66,9 +68,19 @@ public class TownCampfireConfig {
 
             starting_quests = ConfigHelper.defineObject(builder,"starting_quests",IntegerRange.CODEC,new IntegerRange(1,5));
 
+            levelup_walls = builder.defineList("levelup_walls",() -> levelupWalls(),o -> o instanceof Integer integer && integer > 0);
+
             builder.pop();
 
             builder.pop();
+        }
+
+        static List<Integer> levelupWalls() {
+            List<Integer> integers = new ArrayList<>();
+            for (int i = 1; i < 20;i++) {
+                integers.add(i * 5);
+            }
+            return integers;
         }
 
         static List<Component> defaultCampfireNames() {

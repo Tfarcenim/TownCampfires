@@ -33,6 +33,7 @@
   },
   "name": "{\"color\":\"yellow\",\"text\":\"Example Quest 2\"}",
   "rewards": {
-    "experience": 100
+    "campfire_experience": 100,
+    "player_experience": 100
   }
 }

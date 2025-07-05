@@ -43,7 +43,7 @@ public final class TownCampfire {
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_blocks").forGetter(TownCampfire::getUsedBlocks),
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedBlocks),
                     ResourceLocation.CODEC.listOf().fieldOf("visible_quests").forGetter(TownCampfire::getQuestIds),
-                    ExtraCodecs.NON_NEGATIVE_INT.fieldOf("starting_quests").forGetter(campfire -> campfire.startingQuestCount)
+                    ExtraCodecs.NON_NEGATIVE_INT.fieldOf("max_quests").forGetter(campfire -> campfire.maxQuests)
                     ).apply(instance, TownCampfire::new));
     private final BlockPos location;
     private Component name;
@@ -57,19 +57,19 @@ public final class TownCampfire {
     private final List<ResourceLocation> effects = new ArrayList<>();
     private List<ResourceLocation> quests;
 
-    private final int startingQuestCount;
+    private int maxQuests;
 
 
     boolean resync;
 
-    public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches, List<ResourceLocation> quests,int startingQuestCount) {
+    public TownCampfire(BlockPos location, Component name, long experience, int usedBlocks, int usedWorkbenches, List<ResourceLocation> quests,int maxQuests) {
         this.location = location;
         this.name = name;
         this.experience = experience;
         this.usedBlocks = usedBlocks;
         this.usedWorkbenches = usedWorkbenches;
         this.quests = quests;
-        this.startingQuestCount = startingQuestCount;
+        this.maxQuests = maxQuests;
         removeInvalidEffects();
     }
 
@@ -79,7 +79,7 @@ public final class TownCampfire {
 
         quests.removeIf(resourceLocation -> campfireLevelData.completedQuests.getOrDefault(player.getUUID(),Set.of()).contains(resourceLocation));
 
-        TownCampfire townCampfire = new TownCampfire(location,name,experience,usedBlocks,usedWorkbenches,quests,startingQuestCount);
+        TownCampfire townCampfire = new TownCampfire(location,name,experience,usedBlocks,usedWorkbenches,quests, maxQuests);
 
         return townCampfire;
     }
@@ -124,7 +124,7 @@ public final class TownCampfire {
 
         buf.writeCollection(effects,FriendlyByteBuf::writeResourceLocation);
         buf.writeCollection(quests,FriendlyByteBuf::writeResourceLocation);
-        buf.writeInt(startingQuestCount);
+        buf.writeInt(maxQuests);
     }
 
     public static TownCampfire fromPacket(FriendlyByteBuf buf) {
@@ -198,6 +198,14 @@ public final class TownCampfire {
 
     public int getAllowedBlocks() {
         return TownCampfireConfig.CONFIG.base_allowed_blocks.get() + TownCampfireConfig.CONFIG.allowed_blocks_per_level.get() * getLevel();
+    }
+
+    public void setMaxQuests(int maxQuests) {
+        this.maxQuests = maxQuests;
+    }
+
+    public int getMaxQuests() {
+        return maxQuests;
     }
 
     public int getAvailableQuests() {
@@ -304,7 +312,7 @@ public final class TownCampfire {
     }
 
     public int getLevel() {
-        return (int) (experience / TownCampfireConfig.CONFIG.experience_per_level.get());
+        return calculateLevel(experience);
     }
 
     public static long timeUntilRefresh(long gameTime) {
@@ -312,6 +320,10 @@ public final class TownCampfire {
         long modulo = gameTime % timer;
 
         return timer - modulo;
+    }
+
+    public static int calculateLevel(long experience) {
+        return (int) (experience / TownCampfireConfig.CONFIG.experience_per_level.get());
     }
 
     public boolean isLoaded(Level level) {
@@ -373,6 +385,37 @@ public final class TownCampfire {
                 }
                 resync = false;
             }
+        }
+    }
+
+    public void giveExperiencePoints(int campfireExperience, boolean isLevelup) {
+
+        int currentLevel = calculateLevel(experience);
+        int predictedLevel = calculateLevel(campfireExperience+experience);
+
+
+        if (predictedLevel > currentLevel && !isLevelup) {
+            boolean problematic = false;
+            int wall = -1;
+            for (int i = currentLevel+1;i <=predictedLevel;i++) {
+                if (TownCampfireConfig.CONFIG.levelup_walls.get().contains(i)) {
+                    wall = i;
+                    problematic = true;
+                    break;
+                }
+            }
+
+            if (problematic) {
+
+            } else {
+                setExperience(experience + campfireExperience);
+            }
+        } else {
+            setExperience(experience + campfireExperience);
+        }
+
+        if (isLevelup) {
+            maxQuests++;
         }
     }
 }

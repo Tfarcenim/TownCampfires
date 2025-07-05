@@ -2,7 +2,6 @@ package tfar.towncampfires.data.quest;
 
 import com.google.common.collect.Lists;
 import com.google.gson.*;
-import net.minecraft.advancements.AdvancementRewards;
 import net.minecraft.commands.CommandFunction;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -16,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import tfar.towncampfires.TownCampfire;
 
 import javax.annotation.Nullable;
 import java.util.Arrays;
@@ -24,14 +24,16 @@ import java.util.List;
 public class QuestRewards {
 
 
-    public static final QuestRewards EMPTY = new QuestRewards(0, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
-    private final int experience;
+    public static final QuestRewards EMPTY = new QuestRewards(0,0, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
+    private final int playerExperience;
+    private final int campfireExperience;
     private final ResourceLocation[] loot;
     private final ResourceLocation[] recipes;
     private final CommandFunction.CacheableFunction function;
 
-    public QuestRewards(int pExperience, ResourceLocation[] pLoot, ResourceLocation[] pRecipes, CommandFunction.CacheableFunction pFunction) {
-        this.experience = pExperience;
+    public QuestRewards(int playerExperience,int campfireExperience, ResourceLocation[] pLoot, ResourceLocation[] pRecipes, CommandFunction.CacheableFunction pFunction) {
+        this.playerExperience = playerExperience;
+        this.campfireExperience = campfireExperience;
         this.loot = pLoot;
         this.recipes = pRecipes;
         this.function = pFunction;
@@ -41,8 +43,9 @@ public class QuestRewards {
         return this.recipes;
     }
 
-    public void grant(ServerPlayer pPlayer) {
-        pPlayer.giveExperiencePoints(this.experience);
+    public void grant(ServerPlayer pPlayer, TownCampfire campfire,boolean isLevelup) {
+        pPlayer.giveExperiencePoints(this.playerExperience);
+        campfire.giveExperiencePoints(campfireExperience,isLevelup);
         LootContext lootcontext = (new LootContext.Builder(pPlayer.getLevel())).withParameter(LootContextParams.THIS_ENTITY, pPlayer).withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom()).withLuck(pPlayer.getLuck()).create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
         boolean flag = false;
 
@@ -76,7 +79,8 @@ public class QuestRewards {
     }
 
     public String toString() {
-        return "AdvancementRewards{experience=" + this.experience + ", loot=" + Arrays.toString(this.loot) + ", recipes=" + Arrays.toString(this.recipes) + ", function=" + this.function + "}";
+        return "QuestRewards{experience=" + this.playerExperience + ", loot=" + Arrays.toString(this.loot) +
+                ", recipes=" + Arrays.toString(this.recipes) + ", function=" + this.function + "}";
     }
 
     public void writeToPacket(FriendlyByteBuf buf) {
@@ -92,8 +96,12 @@ public class QuestRewards {
             return JsonNull.INSTANCE;
         } else {
             JsonObject jsonobject = new JsonObject();
-            if (this.experience != 0) {
-                jsonobject.addProperty("experience", this.experience);
+            if (this.playerExperience != 0) {
+                jsonobject.addProperty("player_experience", this.playerExperience);
+            }
+
+            if (this.campfireExperience != 0) {
+                jsonobject.addProperty("campfire_experience", this.campfireExperience);
             }
 
             if (this.loot.length > 0) {
@@ -125,7 +133,8 @@ public class QuestRewards {
     }
 
     public static QuestRewards deserialize(JsonObject pJson) throws JsonParseException {
-        int i = GsonHelper.getAsInt(pJson, "experience", 0);
+        int experience = GsonHelper.getAsInt(pJson, "player_experience", 0);
+        int campfireExperience = GsonHelper.getAsInt(pJson, "campfire_experience", 0);
         JsonArray jsonarray = GsonHelper.getAsJsonArray(pJson, "loot", new JsonArray());
         ResourceLocation[] aresourcelocation = new ResourceLocation[jsonarray.size()];
 
@@ -147,11 +156,12 @@ public class QuestRewards {
             commandfunction$cacheablefunction = CommandFunction.CacheableFunction.NONE;
         }
 
-        return new QuestRewards(i, aresourcelocation, aresourcelocation1, commandfunction$cacheablefunction);
+        return new QuestRewards(experience,campfireExperience, aresourcelocation, aresourcelocation1, commandfunction$cacheablefunction);
     }
 
     public static class Builder {
         private int experience;
+        private int campfireExperience;
         private final List<ResourceLocation> loot = Lists.newArrayList();
         private final List<ResourceLocation> recipes = Lists.newArrayList();
         @Nullable
@@ -205,9 +215,8 @@ public class QuestRewards {
             return this;
         }
 
-        public AdvancementRewards build() {
-            return new AdvancementRewards(this.experience, this.loot.toArray(new ResourceLocation[0]), this.recipes.toArray(new ResourceLocation[0]), this.function == null ? CommandFunction.CacheableFunction.NONE : new CommandFunction.CacheableFunction(this.function));
+        public QuestRewards build() {
+            return new QuestRewards(this.experience,campfireExperience, this.loot.toArray(new ResourceLocation[0]), this.recipes.toArray(new ResourceLocation[0]), this.function == null ? CommandFunction.CacheableFunction.NONE : new CommandFunction.CacheableFunction(this.function));
         }
     }
-
 }

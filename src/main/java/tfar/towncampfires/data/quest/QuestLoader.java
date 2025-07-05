@@ -65,6 +65,7 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
         BlockPos location = campfire.location();
         Holder<Biome> biome = level.getBiome(location);
         List<ResourceLocation> list = new ArrayList<>();
+        int maxQuests = campfire.getMaxQuests();
 
         for (Map.Entry<ResourceLocation,Quest> entry : questMap.entrySet()) {
             ResourceLocation resourceLocation = entry.getKey();
@@ -91,6 +92,9 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
             if (!spawnCheck) continue;
 
             list.add(resourceLocation);
+            if (list.size()>= maxQuests) {
+                break;
+            }
 
         }
         return list;
