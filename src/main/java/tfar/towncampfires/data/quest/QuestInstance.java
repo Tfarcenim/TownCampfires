@@ -1,5 +1,6 @@
 package tfar.towncampfires.data.quest;
 
+import com.google.common.collect.ImmutableList;
 import com.mojang.datafixers.util.Pair;
 import net.minecraft.advancements.CriterionTriggerInstance;
 import net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance;
@@ -23,38 +24,47 @@ import java.util.function.Predicate;
 public class QuestInstance {
 
     private final ResourceLocation questID;
-    private boolean active;
     private final UUID leader;
     List<UUID> members = new ArrayList<>();
     List<Integer> progress;
 
+    List<Integer> failureProgress;
+
     Lazy<Quest> questLazy;
 
-    boolean complete;
+    Status status;
 
-    public QuestInstance(ResourceLocation questID, UUID leader) {
+    public static QuestInstance begin(ResourceLocation questID, UUID leader,boolean instantStart) {
+        return new QuestInstance(questID,leader,instantStart ? Status.IN_PROGRESS : Status.NOT_STARTED);
+    }
+
+    public QuestInstance(ResourceLocation questID, UUID leader,Status status) {
         this.questID = questID;
         this.leader = leader;
-        progress = new ArrayList<>(10);
+        this.status = status;
+        progress = new ArrayList<>();
+        failureProgress = new ArrayList<>();
         questLazy= Lazy.of(() -> TownCampfires.questLoader.getQuestMap().get(questID));
     }
 
     public void toPacket(FriendlyByteBuf buf) {
         buf.writeResourceLocation(questID);
-        buf.writeBoolean(active);
+        buf.writeEnum(status);
         buf.writeUUID(leader);
         buf.writeCollection(progress, FriendlyByteBuf::writeInt);
+        buf.writeCollection(failureProgress, FriendlyByteBuf::writeInt);
     }
 
     public static QuestInstance fromPacket(FriendlyByteBuf buf) {
         ResourceLocation questID = buf.readResourceLocation();
-        boolean active = buf.readBoolean();
+        Status active = buf.readEnum(Status.class);
         UUID leader = buf.readUUID();
         List<Integer> integers = buf.readList(FriendlyByteBuf::readInt);
+        List<Integer> failIntegers = buf.readList(FriendlyByteBuf::readInt);
 
-        QuestInstance questInstance = new QuestInstance(questID,leader);
-        questInstance.setActive(active);
+        QuestInstance questInstance = new QuestInstance(questID,leader,active);
         questInstance.progress = integers;
+        questInstance.failureProgress = failIntegers;
         return questInstance;
     }
 
@@ -63,7 +73,7 @@ public class QuestInstance {
     }
 
     public void removeMember(ServerPlayer player) {
-
+        members.remove(player.getUUID());
     }
 
     public ResourceLocation questID() {
@@ -73,13 +83,17 @@ public class QuestInstance {
     public List<Integer> progress() {
         return progress;
     }
-
-    public void setActive(boolean active) {
-        this.active = active;
+    public List<Integer> failureProgress() {
+        return failureProgress;
     }
 
-    public boolean isActive() {
-        return active;
+
+    public void setStatus(Status status) {
+        this.status = status;
+    }
+
+    public Status status() {
+        return status;
     }
 
     public boolean hasPlayer(ServerPlayer player) {
@@ -99,7 +113,7 @@ public class QuestInstance {
     }
 
     public List<UUID> getMembers() {
-        return members;
+        return ImmutableList.copyOf(members);
     }
 
     public UUID leader() {
@@ -110,8 +124,7 @@ public class QuestInstance {
         CompoundTag tag = new CompoundTag();
         tag.putString("quest",questID.toString());
         tag.putString("leader",leader.toString());
-        tag.putBoolean("active",active);
-        tag.putBoolean("complete",complete);
+        tag.putString("status",status.name());
         ListTag listTag = new ListTag();
         for (UUID uuid : members) {
             listTag.add(StringTag.valueOf(uuid.toString()));
@@ -126,14 +139,13 @@ public class QuestInstance {
     public static QuestInstance load(CompoundTag tag) {
         ResourceLocation questID = new ResourceLocation(tag.getString("quest"));
         UUID leader = UUID.fromString(tag.getString("leader"));
-        QuestInstance questInstance = new QuestInstance(questID,leader);
+        Status status = Status.valueOf(tag.getString("status"));
+        QuestInstance questInstance = new QuestInstance(questID,leader,status);
         ListTag listTag = tag.getList("members", Tag.TAG_STRING);
 
         for (Tag tag1 : listTag) {
             questInstance.addPlayer(UUID.fromString(tag1.getAsString()));
         }
-        questInstance.setActive(tag.getBoolean("active"));
-        questInstance.complete = tag.getBoolean("complete");
 
         int[] ints = tag.getIntArray("progress");
         if (ints.length > 0) {
@@ -147,12 +159,47 @@ public class QuestInstance {
     }
 
     public <T extends AbstractCriterionTriggerInstance> boolean check(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
-        if (!hasPlayer(pPlayer) || complete) return false;
+        if (!hasPlayer(pPlayer) || !status.active) return false;
+
+        boolean update = checkFailure(trigger,pPlayer,pTestTrigger);
+        update |= checkCriterias(trigger,pPlayer,pTestTrigger);
+
+        if (update) {
+            updateStatus();
+        }
+        return update;
+    }
+
+    public <T extends AbstractCriterionTriggerInstance> boolean checkFailure(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
         Quest quest = quest();
         boolean update = false;
-        int criteriaCount = quest.criterias().size();
+        var criterias = quest.failureCriterias();
+        int criteriaCount = criterias.size();
         for (int i = 0 ; i <criteriaCount;i++) {
-            Pair<QuestCriteria<?>, Integer> pair = quest.criterias().get(i);
+            Pair<QuestCriteria<?>, Integer> pair = criterias.get(i);
+            QuestCriteria<?> questCriteria = pair.getFirst();
+            CriterionTriggerInstance o = questCriteria.triggerInstance();
+
+            if (questCriteria.trigger() == trigger) {
+                if (pTestTrigger.test((T) o)) {
+                    if (failureProgress.isEmpty()) {
+                        failureProgress = NonNullList.withSize(criteriaCount,0);
+                    }
+                    failureProgress.set(i, failureProgress.get(i) + 1);
+                    update = true;
+                }
+            }
+        }
+        return update;
+    }
+
+    public <T extends AbstractCriterionTriggerInstance> boolean checkCriterias(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
+        Quest quest = quest();
+        boolean update = false;
+        var criterias = quest.criterias();
+        int criteriaCount = criterias.size();
+        for (int i = 0 ; i <criteriaCount;i++) {
+            Pair<QuestCriteria<?>, Integer> pair = criterias.get(i);
             QuestCriteria<?> questCriteria = pair.getFirst();
             CriterionTriggerInstance o = questCriteria.triggerInstance();
 
@@ -166,22 +213,49 @@ public class QuestInstance {
                 }
             }
         }
-        complete = isFinished();
         return update;
     }
 
-    public boolean isFinished() {
-        boolean finished = true;
+    public void updateStatus() {
+
+        List<Pair<QuestCriteria<?>, Integer>> failCriterias = quest().failureCriterias();
+        for (int i = 0; i < failCriterias.size(); i++) {
+            Pair<QuestCriteria<?>, Integer> criteria = failCriterias.get(i);
+            int progress = progress().isEmpty() || progress().size() <= i ? 0 : progress().get(i);
+            int required = criteria.getSecond();
+            if (progress >= required) {
+                status = Status.FAILED;
+                return;
+            }
+        }
+
+        boolean complete = true;
         List<Pair<QuestCriteria<?>, Integer>> criterias = quest().criterias();
         for (int i = 0; i < criterias.size(); i++) {
             Pair<QuestCriteria<?>, Integer> criteria = criterias.get(i);
             int progress = progress().isEmpty() || progress().size() <= i ? 0 : progress().get(i);
             int required = criteria.getSecond();
             if (progress < required) {
-                finished = false;
+                complete = false;
                 break;
             }
         }
-        return finished;
+        if (complete) {
+            status = Status.COMPLETE;
+        }
+    }
+
+
+    public enum Status {
+        NOT_STARTED(false),
+        IN_PROGRESS(true),
+        FAILED(false),
+        COMPLETE(false);
+
+        public final boolean active;
+
+        Status(boolean active) {
+            this.active = active;
+        }
     }
 }

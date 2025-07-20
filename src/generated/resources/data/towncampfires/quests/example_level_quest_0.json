@@ -1,5 +1,5 @@
 {
-  "type": "normal",
+  "type": "level",
   "appearance_conditions": {
     "biome_whitelist": "minecraft:is_overworld",
     "level_range": {
@@ -25,13 +25,14 @@
     }
   ],
   "desc": [
-    "{\"color\":\"dark_gray\",\"text\":\"Example Quest 3 Description\"}"
+    "{\"color\":\"dark_gray\",\"text\":\"Example Level Quest 0 Desc\"}"
   ],
+  "failure_criteria": [],
   "icon": {
     "Count": 1,
     "id": "minecraft:gold_ingot"
   },
-  "name": "{\"color\":\"green\",\"text\":\"Example Quest 3\"}",
+  "name": "{\"color\":\"red\",\"text\":\"Example Level Quest 0\"}",
   "rewards": {
     "campfire_experience": 100,
     "player_experience": 100

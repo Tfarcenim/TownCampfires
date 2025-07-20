@@ -41,6 +41,15 @@ public class TownCampfiresClient {
         bus.addListener(TownCampfiresClient::overlays);
     }
 
+    public static boolean isQuestAlreadyActive(ResourceLocation resourceLocation) {
+        for (QuestInstance questInstance : currentQuests) {
+            if (Objects.equals(resourceLocation,questInstance.questID())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     static void overlays(RegisterGuiOverlaysEvent event) {
         event.registerAboveAll("quests",overlay);
     }

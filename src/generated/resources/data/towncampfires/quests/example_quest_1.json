@@ -27,6 +27,7 @@
   "desc": [
     "{\"color\":\"dark_gray\",\"text\":\"Example Quest 1 Description\"}"
   ],
+  "failure_criteria": [],
   "icon": {
     "Count": 1,
     "id": "minecraft:gold_ingot"

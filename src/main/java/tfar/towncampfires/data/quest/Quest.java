@@ -19,7 +19,8 @@ import java.util.List;
 
 public record Quest(Component name, ItemStack icon, List<Component> desc,
                     QuestAppearanceConditions appearanceConditions, tfar.towncampfires.data.quest.Quest.Type type,
-                    List<Pair<QuestCriteria<?>, Integer>> criterias, QuestRewards rewards) {
+                    List<Pair<QuestCriteria<?>, Integer>> criterias, QuestRewards rewards,
+                    List<Pair<QuestCriteria<?>, Integer>> failureCriterias,QuestPunishments punishments) {
 
     //.encodeStart(JsonOps.INSTANCE, quest).resultOrPartial(TownCampfires.LOGGER::error).get().getAsJsonObject();
 
@@ -49,20 +50,25 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
 
         jsonObject.add("type", element4);
 
-        JsonArray jsonArray = new JsonArray(criterias().size());
 
+        jsonObject.add("criteria", writeCriteria(criterias));
+        jsonObject.add("rewards", rewards.serializeToJson());
+
+        jsonObject.add("failure_criteria", writeCriteria(failureCriterias));
+        jsonObject.add("punishments", punishments.serializeToJson());
+
+        return jsonObject;
+    }
+
+    JsonArray writeCriteria(List<Pair<QuestCriteria<?>,Integer>> criterias) {
+        JsonArray jsonArray = new JsonArray(criterias().size());
         for (Pair<QuestCriteria<?>, Integer> criteria : criterias) {
             JsonObject o = new JsonObject();
             o.add("trigger", criteria.getFirst().serializeToJson());
             o.addProperty("count", criteria.getSecond());
             jsonArray.add(o);
         }
-
-        jsonObject.add("criteria", jsonArray);
-
-        jsonObject.add("rewards", rewards.serializeToJson());
-
-        return jsonObject;
+        return jsonArray;
     }
 
     //Quest.CODEC.decode(JsonOps.INSTANCE, pJson).resultOrPartial(LOGGER::error).orElseThrow().getFirst()
@@ -87,6 +93,17 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
 
         if (jsonArray.isEmpty()) throw new JsonParseException("Quest must have criteria!");
 
+        var criterias = readCriteria(jsonArray,context);
+        QuestRewards rewards = QuestRewards.deserialize(object.get("rewards").getAsJsonObject());
+
+        var failure_criterias = readCriteria(object.getAsJsonArray("failure_criteria"),context);
+
+        QuestPunishments punishments = QuestPunishments.deserialize((JsonObject) object.get("punishments"));
+
+        return new Quest(name, icon, desc, appearance_conditions, type, criterias, rewards,failure_criterias,punishments);
+    }
+
+    static List<Pair<QuestCriteria<?>, Integer>> readCriteria(JsonArray jsonArray,DeserializationContext context) {
         List<Pair<QuestCriteria<?>, Integer>> criterias = new ArrayList<>(jsonArray.size());
 
         for (JsonElement element : jsonArray) {
@@ -95,10 +112,7 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
             int count = GsonHelper.getAsInt(o, "count", 1);
             criterias.add(Pair.of(questCriteria, count));
         }
-
-        QuestRewards rewards = QuestRewards.deserialize(object.get("rewards").getAsJsonObject());
-
-        return new Quest(name, icon, desc, appearance_conditions, type, criterias, rewards);
+        return criterias;
     }
 
     public void toPacket(FriendlyByteBuf buf) {
@@ -111,12 +125,18 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
             questCriteriaIntegerPair.getFirst().serializeToNetwork(buf1);
             buf1.writeInt(questCriteriaIntegerPair.getSecond());
         });
+        buf.writeCollection(failureCriterias, (buf1, questCriteriaIntegerPair) -> {
+            questCriteriaIntegerPair.getFirst().serializeToNetwork(buf1);
+            buf1.writeInt(questCriteriaIntegerPair.getSecond());
+        });
     }
 
     public static Quest fromPacket(FriendlyByteBuf buf) {
         return new Quest(buf.readComponent(), buf.readItem(), buf.readList(FriendlyByteBuf::readComponent),
                 QuestAppearanceConditions.fromPacket(buf), buf.readEnum(Type.class),
-                buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())), QuestRewards.readFromPacket(buf));
+                buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())), QuestRewards.readFromPacket(buf),
+                buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())),
+                QuestPunishments.readFromPacket(buf));
     }
 
     // Quest Type: normal, preparation solo, preparation all or level.

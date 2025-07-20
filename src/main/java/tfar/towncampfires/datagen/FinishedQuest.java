@@ -9,10 +9,7 @@ import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import tfar.towncampfires.config.IntegerRange;
-import tfar.towncampfires.data.quest.Quest;
-import tfar.towncampfires.data.quest.QuestAppearanceConditions;
-import tfar.towncampfires.data.quest.QuestCriteria;
-import tfar.towncampfires.data.quest.QuestRewards;
+import tfar.towncampfires.data.quest.*;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,7 +41,11 @@ public class FinishedQuest {
 
         List<Pair<QuestCriteria<?>,Integer>> criteria = new ArrayList<>();
 
+        List<Pair<QuestCriteria<?>,Integer>> failure_criteria = new ArrayList<>();
+
         QuestRewards rewards = new QuestRewards(100,100, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
+
+        QuestPunishments punishments = QuestPunishments.EMPTY;
 
         public Builder title(Component title) {
             this.title = title;
@@ -72,8 +73,7 @@ public class FinishedQuest {
         }
 
         public Builder addCriteria(QuestCriteria<?> criteria) {
-            this.criteria.add(Pair.of(criteria,1));
-            return this;
+            return addCriteria(criteria,1);
         }
 
         public Builder addCriteria(QuestCriteria<?> criteria,int count) {
@@ -86,12 +86,26 @@ public class FinishedQuest {
             return this;
         }
 
+        public Builder addFailureCriteria(QuestCriteria<?> criteria) {
+            return addFailureCriteria(criteria,1);
+        }
+
+        public Builder addFailureCriteria(QuestCriteria<?> criteria,int count) {
+            this.failure_criteria.add(Pair.of(criteria,count));
+            return this;
+        }
+
+        public Builder punishment(QuestPunishments punishments) {
+            this.punishments = punishments;
+            return this;
+        }
+
         public void save(Consumer<FinishedQuest> consumer, ResourceLocation id) {
             consumer.accept(build(id));
         }
 
         private FinishedQuest build(ResourceLocation id) {
-            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions,type,criteria,rewards));
+            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions,type,criteria,rewards,failure_criteria,punishments));
         }
     }
 

@@ -25,13 +25,36 @@
     }
   ],
   "desc": [
-    "{\"color\":\"dark_gray\",\"text\":\"Example Quest 2 Description\"}"
+    "{\"color\":\"dark_gray\",\"text\":\"Don't kill any creepers\"}"
+  ],
+  "failure_criteria": [
+    {
+      "count": 1,
+      "trigger": {
+        "conditions": {
+          "entity": [
+            {
+              "condition": "minecraft:entity_properties",
+              "entity": "this",
+              "predicate": {
+                "type": "minecraft:creeper"
+              }
+            }
+          ]
+        },
+        "desc": "{\"color\":\"dark_gray\",\"text\":\"Avoid Creeper\"}",
+        "trigger": "minecraft:player_killed_entity"
+      }
+    }
   ],
   "icon": {
     "Count": 1,
     "id": "minecraft:gold_ingot"
   },
-  "name": "{\"color\":\"yellow\",\"text\":\"Example Quest 2\"}",
+  "name": "{\"color\":\"gold\",\"text\":\"Don't kill Creepers\"}",
+  "punishments": {
+    "player_experience": -1000
+  },
   "rewards": {
     "campfire_experience": 100,
     "player_experience": 100

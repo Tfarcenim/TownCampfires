@@ -10,7 +10,6 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.components.ObjectSelectionList;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -33,25 +32,19 @@ import tfar.towncampfires.network.server.C2STownCampfireQuestPacket;
 import tfar.towncampfires.utils.Utils;
 
 import javax.annotation.Nullable;
-import java.util.*;
+import java.util.Collection;
+import java.util.List;
+import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class TownCampfireScreen extends Screen {
-
-    public static final ResourceLocation BACKGROUND = TownCampfires.id("textures/gui/background.png");
+public class TownCampfireScreen extends BasicScreen {
 
     protected EditBox name;
     @Nullable
     private List<FormattedCharSequence> toolTip;
-    /** The X size of the inventory window in pixels. */
-    protected int imageWidth = 320;
-    /** The Y size of the inventory window in pixels. */
-    protected int imageHeight = 230;
-    /** Starting X position for the Gui. Inconsistent use for Gui backgrounds. */
-    protected int leftPos;
-    /** Starting Y position for the Gui. Inconsistent use for Gui backgrounds. */
-    protected int topPos;
+
     private TownCampfire townCampfire;
 
     public void setCampfire(TownCampfire townCampfire) {
@@ -86,6 +79,7 @@ public class TownCampfireScreen extends Screen {
     protected Button finishQuest;
 
     protected Button questTabSwitch;
+    protected Button info;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -94,8 +88,6 @@ public class TownCampfireScreen extends Screen {
     @Override
     protected void init() {
         super.init();
-        this.leftPos = (this.width - this.imageWidth) / 2;
-        this.topPos = (this.height - this.imageHeight) / 2;
         Tab[] values = Tab.values();
         int tabWidth = imageWidth / values.length;
         for (int i = 0; i < values.length; i++) {
@@ -129,6 +121,9 @@ public class TownCampfireScreen extends Screen {
         //campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(activeQuestWidget);
 
+        info = new Button(leftPos + imageWidth/2+76,topPos+imageHeight - 25,50,20,Component.literal("Info"),b -> moreInfo());
+        addRenderableWidget(info);
+
 
         initEditBox();
 
@@ -153,7 +148,7 @@ public class TownCampfireScreen extends Screen {
         addRenderableWidget(finishQuest);
 
         questTabSwitch = new ExtendedButton(leftPos + 70,topPos+23,66,16,Component.literal("Available"),
-                b -> toggleQuestTab());
+                this::toggleQuestTab);
         addRenderableWidget(questTabSwitch);
 
         switchToTab(current);
@@ -176,8 +171,25 @@ public class TownCampfireScreen extends Screen {
         }
     }
 
-    void toggleQuestTab() {
+    void moreInfo() {
+        QuestWidget.QuestEntry selected = questWidget.getSelected();
+        Quest quest = null;
+        if (selected != null) {
+            quest = selected.quest;
+        } else {
+            ActiveQuestWidget.ActiveQuestEntry selectedA = activeQuestWidget.getSelected();
+            if (selectedA != null) {
+                quest = selectedA.questInstance.quest();
+            }
+        }
+        if (quest != null) {
+            Minecraft.getInstance().pushGuiLayer(new QuestInfoScreen(quest.name(),this,quest));
+        }
+    }
+
+    void toggleQuestTab(Button b) {
         questTab = Utils.cycle(questTab);
+        b.setMessage(Component.literal(questTab.name()));
         handleQuestTabs(current == Tab.quest);
     }
 
@@ -215,14 +227,19 @@ public class TownCampfireScreen extends Screen {
         this.toolTip = pToolTip;
     }
 
+    protected void renderBg(PoseStack pPoseStack, float pPartialTick, int pMouseX, int pMouseY) {
+        int xSize = imageWidth;
+        int ySize = imageHeight - TAB_HEIGHT+4;
+        RenderUtils.blitNineSlicedSized(pPoseStack,BACKGROUND,leftPos,topPos + TAB_HEIGHT,
+                xSize,ySize,4,4,12,12,0,0,12,12);
+
+    }
+
     public static final int DARK_GRAY = 0x404040;
 
     @Override
     public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
         this.toolTip = null;
-
-        this.renderBg(pPoseStack, pPartialTick, pMouseX, pMouseY);
-        RenderSystem.disableDepthTest();
         super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
         this.name.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
 
@@ -265,7 +282,7 @@ public class TownCampfireScreen extends Screen {
                 int spacing = 12;
 
                 switch (questTab) {
-                    case CURRENT -> {
+                    case current -> {
                         ActiveQuestWidget.ActiveQuestEntry questEntry = activeQuestWidget.getSelected();
                         if (questEntry != null) {
                             QuestInstance questInstance = questEntry.questInstance;
@@ -314,7 +331,7 @@ public class TownCampfireScreen extends Screen {
                         }
                     }
 
-                    case AVAILABLE -> {
+                    case available -> {
                         QuestWidget.QuestEntry questEntry = questWidget.getSelected();
                         if (questEntry != null) {
                             Quest quest = questEntry.quest;
@@ -338,8 +355,6 @@ public class TownCampfireScreen extends Screen {
                                 int count = entry.getSecond();
                                 font.draw(pPoseStack,criteria.desc().copy().append(" "+count),xStart,yStart + completeY +10 +  10 * i,0xffffff);
                             }
-
-                            font.draw(pPoseStack,Component.literal("Fail Conditions"),xStart,yStart+160,DARK_GRAY);
                         }
                     }
                 }
@@ -389,13 +404,7 @@ public class TownCampfireScreen extends Screen {
         return false;
     }
 
-    private void renderBg(PoseStack pPoseStack, float pPartialTick, int pMouseX, int pMouseY) {
-        int xSize = imageWidth;
-        int ySize = imageHeight - TAB_HEIGHT+4;
-        RenderUtils.blitNineSlicedSized(pPoseStack,BACKGROUND,leftPos,topPos + TAB_HEIGHT,
-                xSize,ySize,4,4,12,12,0,0,12,12);
 
-    }
 
     @Override
     public boolean keyPressed(int pKeyCode, int pScanCode, int pModifiers) {
@@ -417,10 +426,10 @@ public class TownCampfireScreen extends Screen {
         }
     }
 
-    QuestTab questTab = QuestTab.AVAILABLE;
+    QuestTab questTab = QuestTab.available;
 
     enum QuestTab {
-        AVAILABLE,CURRENT;
+        available, current;
     }
 
     protected void switchToTab(Tab tab) {
@@ -439,19 +448,20 @@ public class TownCampfireScreen extends Screen {
     }
 
     protected void handleQuestTabs(boolean visible) {
-        questWidget.setVisible(visible && questTab == QuestTab.AVAILABLE);
-        activeQuestWidget.setVisible(visible && questTab == QuestTab.CURRENT);
+        questWidget.setVisible(visible && questTab == QuestTab.available);
+        activeQuestWidget.setVisible(visible && questTab == QuestTab.current);
         questWidget.setSelected(null);
         activeQuestWidget.setSelected(null);
-        startQuest.visible = visible && questTab==QuestTab.AVAILABLE && questWidget.getSelected() != null;
-        finishQuest.visible = visible && questTab==QuestTab.CURRENT && activeQuestWidget.getSelected() != null;
+        startQuest.visible = visible && questTab==QuestTab.available && questWidget.getSelected() != null;
+        finishQuest.visible = visible && questTab==QuestTab.current && activeQuestWidget.getSelected() != null;
+        info.visible = visible && (questTab==QuestTab.current && (questWidget.getSelected() != null||activeQuestWidget.getSelected() != null));
     }
 
     public boolean isQuestAvailable(Quest quest) {
         ResourceLocation questID = TownCampfiresClient.clientLookup(quest);
         for (QuestInstance currentQuest : TownCampfiresClient.currentQuests) {
             ResourceLocation id = currentQuest.questID();
-            if (Objects.equals(questID,id) && currentQuest.isActive()) {
+            if (Objects.equals(questID,id) && currentQuest.status().active) {
                 return false;
             }
         }
@@ -671,6 +681,7 @@ public class TownCampfireScreen extends Screen {
             super.setSelected(pSelected);
             if (pSelected != null && isQuestAvailable(pSelected.quest)) {
                 startQuest.visible = true;
+                info.visible = true;
             }
         }
 
@@ -685,7 +696,12 @@ public class TownCampfireScreen extends Screen {
 
         public void refreshList() {
             this.clearEntries();
-            buildList(townCampfire.getQuestIds(),this::addEntry, location->new QuestEntry(TownCampfiresClient.questLoader.getQuestMap().get(location)));
+            buildList(townCampfire.getQuestIds(),this::addEntry, location-> {
+                if (TownCampfiresClient.isQuestAlreadyActive(location)) {
+                    return null;
+                }
+                return new QuestEntry(TownCampfiresClient.questLoader.getQuestMap().get(location));
+            });
         }
 
         @Override
@@ -768,7 +784,8 @@ public class TownCampfireScreen extends Screen {
             super.setSelected(pSelected);
             if (pSelected != null) {
                 finishQuest.visible = true;
-                finishQuest.active = pSelected.questInstance.isFinished();
+                info.visible = true;
+                finishQuest.active = pSelected.questInstance.status() == QuestInstance.Status.COMPLETE;
             }
         }
 

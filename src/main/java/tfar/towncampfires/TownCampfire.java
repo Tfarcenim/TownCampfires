@@ -32,6 +32,7 @@ import tfar.towncampfires.network.client.S2CTownCampfirePacket;
 import tfar.towncampfires.utils.MiscCodecs;
 import tfar.towncampfires.utils.Utils;
 
+import javax.annotation.Nullable;
 import java.util.*;
 
 public final class TownCampfire {
@@ -56,6 +57,9 @@ public final class TownCampfire {
 
     private final List<ResourceLocation> effects = new ArrayList<>();
     private List<ResourceLocation> quests;
+
+    @Nullable
+    private transient ResourceLocation levelQuest;
 
     private int maxQuests;
 
@@ -219,6 +223,7 @@ public final class TownCampfire {
     public void refresh(ServerLevel level) {
         usedBlocks = 0;
         usedWorkbenches = 0;
+        levelQuest = null;
 
         if (isLoaded(level)) {
             sampleNearbyBiomes(level);
@@ -315,6 +320,17 @@ public final class TownCampfire {
         return calculateLevel(experience);
     }
 
+    public boolean atLevelThreshold() {
+        int level = getLevel();
+        List<? extends Integer> integers = TownCampfireConfig.CONFIG.levelup_walls.get();
+        for (Integer i : integers) {
+            if (i - 1 == level) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public static long timeUntilRefresh(long gameTime) {
         long timer = TownCampfireConfig.CONFIG.refresh_timer.get();
         long modulo = gameTime % timer;
@@ -375,6 +391,16 @@ public final class TownCampfire {
             refresh(pLevel);
         }
 
+        if (atLevelThreshold()) {
+            if (levelQuest == null) {
+                levelQuest = TownCampfires.questLoader.addLevelQuest(this,pLevel);
+                if (levelQuest != null) {
+                    quests.add(0,levelQuest);
+                    resync = true;
+                }
+            }
+        }
+
         if (pLevel.getGameTime() % 20 == 0 && loaded) {
             List<Villager> villagers = pLevel.getEntitiesOfClass(Villager.class, getBoundingBox());
             setCurrentVillagers(villagers.size());
@@ -396,17 +422,25 @@ public final class TownCampfire {
 
         if (predictedLevel > currentLevel && !isLevelup) {
             boolean problematic = false;
-            int wall = -1;
             for (int i = currentLevel+1;i <=predictedLevel;i++) {
                 if (TownCampfireConfig.CONFIG.levelup_walls.get().contains(i)) {
-                    wall = i;
                     problematic = true;
                     break;
                 }
             }
 
             if (problematic) {
-
+                int remaining = campfireExperience;
+                while (remaining > 0) {
+                    int predict = calculateLevel(experience+1);
+                    if (TownCampfireConfig.CONFIG.levelup_walls.get().contains(predict)) {
+                        break;
+                    } else {
+                        experience++;
+                        remaining--;
+                        resync = true;
+                    }
+                }
             } else {
                 setExperience(experience + campfireExperience);
             }

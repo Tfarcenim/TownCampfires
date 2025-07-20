@@ -33,13 +33,17 @@ public class ModCommands {
     private static int manualRefresh(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
         CommandSourceStack source = context.getSource();
         ServerLevel level = source.getLevel();
+        MinecraftServer server = source.getServer();
         BlockPos blockPos = BlockPosArgument.getLoadedBlockPos(context,"pos");
-
+        CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(server.overworld());
         BlockEntity be = level.getBlockEntity(blockPos);
 
         if (be instanceof TownCampfireBlockEntity tcbe) {
             TownCampfire townCampfire = tcbe.townCampfire;
+
+            campfireLevelData.completedQuests.clear();
             townCampfire.refresh(level);
+            campfireLevelData.setDirty();
             source.sendSuccess(Component.literal("Refreshed campfire"),true);
             return 1;
         } else {

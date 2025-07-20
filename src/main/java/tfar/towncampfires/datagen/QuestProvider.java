@@ -5,15 +5,20 @@ import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.CriteriaTriggers;
+import net.minecraft.advancements.critereon.EntityPredicate;
 import net.minecraft.advancements.critereon.KilledTrigger;
+import net.minecraft.commands.CommandFunction;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
 import org.slf4j.Logger;
 import tfar.towncampfires.TownCampfires;
+import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestCriteria;
+import tfar.towncampfires.data.quest.QuestPunishments;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -65,20 +70,23 @@ public class QuestProvider implements DataProvider {
                         KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
                 .save(consumer, TownCampfires.id("example_quest_1"));
 
-        FinishedQuest.builder().title(Component.literal("Example Quest 2").withStyle(ChatFormatting.YELLOW))
-                .desc(Component.literal("Example Quest 2 Description").withStyle(ChatFormatting.DARK_GRAY))
-                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
-                .save(consumer, TownCampfires.id("example_quest_2"));
+        FinishedQuest.builder().title(Component.literal("Don't kill Creepers").withStyle(ChatFormatting.GOLD))
+                .desc(Component.literal("Don't kill any creepers").withStyle(ChatFormatting.DARK_GRAY))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
+                        KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
+                .addFailureCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
+                        KilledTrigger.TriggerInstance.playerKilledEntity(EntityPredicate.Builder.entity().of(EntityType.CREEPER)),
+                        Component.literal("Avoid Creeper").withStyle(ChatFormatting.DARK_GRAY)))
+                .punishment(new QuestPunishments(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE))
+                .save(consumer, TownCampfires.id("dont_kill_creepers"));
 
-        FinishedQuest.builder().title(Component.literal("Example Quest 3").withStyle(ChatFormatting.GREEN))
-                .desc(Component.literal("Example Quest 3 Description").withStyle(ChatFormatting.DARK_GRAY))
-                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
-                .save(consumer, TownCampfires.id("example_quest_3"));
 
-        FinishedQuest.builder().title(Component.literal("Example Quest 4").withStyle(ChatFormatting.BLUE))
-                .desc(Component.literal("Example Quest 4 Description").withStyle(ChatFormatting.DARK_GRAY))
-                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
-                .save(consumer, TownCampfires.id("example_quest_4"));
+        FinishedQuest.builder().title(Component.literal("Example Level Quest 0").withStyle(ChatFormatting.RED))
+                .type(Quest.Type.level)
+                .desc(Component.literal("Example Level Quest 0 Desc").withStyle(ChatFormatting.DARK_GRAY))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
+                        KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
+                .save(consumer, TownCampfires.id("example_level_quest_0"));
 
     }
 

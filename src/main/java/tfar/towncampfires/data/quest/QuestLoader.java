@@ -70,6 +70,7 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
         for (Map.Entry<ResourceLocation,Quest> entry : questMap.entrySet()) {
             ResourceLocation resourceLocation = entry.getKey();
             Quest quest = entry.getValue();
+            if (quest.type() == Quest.Type.level) continue;
             QuestAppearanceConditions questAppearanceConditions = quest.appearanceConditions();
             boolean correctBiome = biome.is(questAppearanceConditions.biomeWhitelist())^!questAppearanceConditions.isWhiteList();
             if (!correctBiome)continue;
@@ -95,9 +96,42 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
             if (list.size()>= maxQuests) {
                 break;
             }
-
         }
+
         return list;
+    }
+
+    public ResourceLocation addLevelQuest(TownCampfire campfire, ServerLevel level) {
+        BlockPos location = campfire.location();
+        Holder<Biome> biome = level.getBiome(location);
+
+        for (Map.Entry<ResourceLocation,Quest> entry : questMap.entrySet()) {
+            ResourceLocation resourceLocation = entry.getKey();
+            Quest quest = entry.getValue();
+            if (quest.type() != Quest.Type.level) continue;
+            QuestAppearanceConditions questAppearanceConditions = quest.appearanceConditions();
+            boolean correctBiome = biome.is(questAppearanceConditions.biomeWhitelist())^!questAppearanceConditions.isWhiteList();
+            if (!correctBiome)continue;
+
+            boolean hasNearby = false;
+            for (Holder<Biome> biomeHolder : campfire.getNearbyBiomes()) {
+                if (biomeHolder.is(questAppearanceConditions.nearbyBiomes())) {
+                    hasNearby = true;
+                    break;
+                }
+            }
+
+            if (!hasNearby) continue;
+
+            boolean inRange = questAppearanceConditions.levelRange().test(campfire.getLevel());
+            if (!inRange) continue;
+
+            double spawnDist = Math.sqrt(level.getSharedSpawnPos().distSqr(location));
+            boolean spawnCheck = questAppearanceConditions.spawnDistance().test(spawnDist);
+            if (!spawnCheck) continue;
+            return resourceLocation;
+        }
+        return null;
     }
 
     public ResourceLocation lookup(Quest quest) {

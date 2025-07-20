@@ -9,6 +9,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -80,7 +81,7 @@ public class CampfireLevelData extends SavedData {
     public void sendQuestsTo(ServerPlayer player) {
         List<QuestInstance> questInstances = new ArrayList<>();
         for (QuestInstance questInstance : currentQuests) {
-            if (questInstance.hasPlayer(player) || !questInstance.isActive()) {//if the player is a member OR if quest can be joined
+            if (questInstance.hasPlayer(player) || questInstance.status() == QuestInstance.Status.NOT_STARTED) {//if the player is a member OR if quest can be joined
                 questInstances.add(questInstance);
             }
         }
@@ -89,15 +90,40 @@ public class CampfireLevelData extends SavedData {
 
     public <T extends AbstractCriterionTriggerInstance> void
     checkQuests(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
+        List<QuestInstance> toRemove = new ArrayList<>();
+        List<ServerPlayer> needUpdates = new ArrayList<>();
         for (QuestInstance questInstance : currentQuests) {
-            if (questInstance.isActive()) {
+            if (questInstance.status().active) {
                 boolean check = questInstance.check(trigger, pPlayer, pTestTrigger);
                 if (check) {
-                    setDirty();
-                    sendQuestsTo(pPlayer);
+                    needUpdates.add(pPlayer);
+                    if (questInstance.status() == QuestInstance.Status.FAILED) {
+                        questInstance.quest().punishments().punish(pPlayer,null);
+                        questInstance.removeMember(pPlayer);
+                        toRemove.add(questInstance);
+                        MinecraftServer server = pPlayer.server;
+                        for (UUID uuid : questInstance.getMembers()) {
+                            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
+                            if (player != null) {
+                                questInstance.quest().punishments().punish(player,null);
+                                questInstance.removeMember(player);
+                                needUpdates.add(player);
+                            } else {//handle offline players
+
+                            }
+                        }
+                    }
                 }
             }
         }
+        for (ServerPlayer player : needUpdates) {
+            for (QuestInstance questInstance : toRemove) {
+                markQuestCompleted(player,questInstance.questID());
+                currentQuests.remove(questInstance);
+            }
+            sendQuestsTo(player);
+        }
+        setDirty();
     }
 
     public void startQuest(ServerPlayer player, ResourceLocation questID, TownCampfire campfire) {
@@ -110,9 +136,8 @@ public class CampfireLevelData extends SavedData {
             if (existing == null) {//make a new quest instance
                 switch (quest.type()) {
                     case normal, level -> {
-                        QuestInstance questInstance = new QuestInstance(questID, player.getUUID());
+                        QuestInstance questInstance = QuestInstance.begin(questID, player.getUUID(),true);
                         currentQuests.add(questInstance);
-                        questInstance.setActive(true);
                         sendQuestsTo(player);
                         setDirty();
                     }
@@ -130,7 +155,7 @@ public class CampfireLevelData extends SavedData {
                         }
 
                         if (!wasAdded) {
-                            QuestInstance questInstance = new QuestInstance(questID, player.getUUID());
+                            QuestInstance questInstance = QuestInstance.begin(questID, player.getUUID(),false);
                             currentQuests.add(questInstance);
                             setDirty();
                         }
@@ -142,10 +167,10 @@ public class CampfireLevelData extends SavedData {
 
                     }
                     case preparation_solo -> {
-                        existing.setActive(true);
+                        existing.setStatus(QuestInstance.Status.IN_PROGRESS);
                     }
                     case preparation_all -> {
-                        existing.setActive(true);
+                        existing.setStatus(QuestInstance.Status.IN_PROGRESS);
                     }
                     case level -> {
                     }
@@ -160,7 +185,7 @@ public class CampfireLevelData extends SavedData {
         if (existing == null) {//make a new quest instance
             TownCampfires.LOGGER.warn("{} Attempted to claim reward for nonexistent quest",player);
         } else {
-            if (existing.isActive() && existing.isFinished() && existing.hasPlayer(player)) {
+            if (existing.status() == QuestInstance.Status.COMPLETE && existing.hasPlayer(player)) {
                 QuestRewards questRewards = existing.quest().rewards();
                 questRewards.grant(player,townCampfire,quest.type() == Quest.Type.level);
                 existing.removeMember(player);
@@ -168,17 +193,19 @@ public class CampfireLevelData extends SavedData {
                     currentQuests.remove(existing);
                 }
 
-                Set<ResourceLocation> set = completedQuests.computeIfAbsent(player.getUUID(), k -> new HashSet<>());
-
-                set.add(questID);
-
+                markQuestCompleted(player,questID);
                 sendQuestsTo(player);
                 setDirty();
             }
         }
     }
 
-    @javax.annotation.Nullable
+    public void markQuestCompleted(ServerPlayer player,ResourceLocation questID) {
+        Set<ResourceLocation> set = completedQuests.computeIfAbsent(player.getUUID(), k -> new HashSet<>());
+        set.add(questID);
+    }
+
+    @Nullable
     public QuestInstance findExistingQuest(Quest quest, ServerPlayer player) {
         for (QuestInstance questInstance : this.currentQuests) {
             Quest quest1 = questInstance.quest();
@@ -187,10 +214,6 @@ public class CampfireLevelData extends SavedData {
             }
         }
         return null;
-    }
-
-    public TownCampfire getLastVisited(UUID uuid) {
-        return lastVisited.get(uuid);
     }
 
     public static CampfireLevelData getOrCreate(ServerLevel level) {
