@@ -1,5 +1,4 @@
 {
-  "type": "level",
   "appearance_conditions": {
     "biome_whitelist": "minecraft:is_overworld",
     "level_range": {
@@ -32,6 +31,8 @@
     "Count": 1,
     "id": "minecraft:gold_ingot"
   },
+  "level_up": true,
+  "multiplayer_type": "solo",
   "name": "{\"color\":\"red\",\"text\":\"Example Level Quest 0\"}",
   "rewards": {
     "campfire_experience": 100,

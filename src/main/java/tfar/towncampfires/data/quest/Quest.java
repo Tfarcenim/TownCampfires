@@ -18,9 +18,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 public record Quest(Component name, ItemStack icon, List<Component> desc,
-                    QuestAppearanceConditions appearanceConditions, tfar.towncampfires.data.quest.Quest.Type type,
+                    QuestAppearanceConditions appearanceConditions,MultiplayerType type,
                     List<Pair<QuestCriteria<?>, Integer>> criterias, QuestRewards rewards,
-                    List<Pair<QuestCriteria<?>, Integer>> failureCriterias,QuestPunishments punishments) {
+                    List<Pair<QuestCriteria<?>, Integer>> failureCriterias,QuestPunishments punishments,boolean levelUp) {
 
     //.encodeStart(JsonOps.INSTANCE, quest).resultOrPartial(TownCampfires.LOGGER::error).get().getAsJsonObject();
 
@@ -45,10 +45,12 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
 
         jsonObject.add("appearance_conditions", element3);
 
-        JsonElement element4 = MiscCodecs.enumCodec(Type.class).encodeStart(JsonOps.INSTANCE, type)
+
+
+        JsonElement element4 = MiscCodecs.enumCodec(MultiplayerType.class).encodeStart(JsonOps.INSTANCE, type)
                 .resultOrPartial(TownCampfires.LOGGER::error).get();
 
-        jsonObject.add("type", element4);
+        jsonObject.add("multiplayer_type", element4);
 
 
         jsonObject.add("criteria", writeCriteria(criterias));
@@ -56,6 +58,8 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
 
         jsonObject.add("failure_criteria", writeCriteria(failureCriterias));
         jsonObject.add("punishments", punishments.serializeToJson());
+
+        jsonObject.addProperty("level_up",levelUp);
 
         return jsonObject;
     }
@@ -86,7 +90,7 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
         QuestAppearanceConditions appearance_conditions = QuestAppearanceConditions.CODEC.decode(JsonOps.INSTANCE, object.get("appearance_conditions"))
                 .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
 
-        Type type = MiscCodecs.enumCodec(Type.class).decode(JsonOps.INSTANCE, object.get("type"))
+        MultiplayerType multiplayerType = MiscCodecs.enumCodec(MultiplayerType.class).decode(JsonOps.INSTANCE, object.get("multiplayer_type"))
                 .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
 
         JsonArray jsonArray = object.getAsJsonArray("criteria");
@@ -100,7 +104,9 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
 
         QuestPunishments punishments = QuestPunishments.deserialize((JsonObject) object.get("punishments"));
 
-        return new Quest(name, icon, desc, appearance_conditions, type, criterias, rewards,failure_criterias,punishments);
+        boolean levelUp = object.get("level_up").getAsBoolean();
+
+        return new Quest(name, icon, desc, appearance_conditions, multiplayerType, criterias, rewards,failure_criterias,punishments,levelUp);
     }
 
     static List<Pair<QuestCriteria<?>, Integer>> readCriteria(JsonArray jsonArray,DeserializationContext context) {
@@ -129,19 +135,20 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
             questCriteriaIntegerPair.getFirst().serializeToNetwork(buf1);
             buf1.writeInt(questCriteriaIntegerPair.getSecond());
         });
+        buf.writeBoolean(levelUp);
     }
 
     public static Quest fromPacket(FriendlyByteBuf buf) {
         return new Quest(buf.readComponent(), buf.readItem(), buf.readList(FriendlyByteBuf::readComponent),
-                QuestAppearanceConditions.fromPacket(buf), buf.readEnum(Type.class),
+                QuestAppearanceConditions.fromPacket(buf), buf.readEnum(MultiplayerType.class),
                 buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())), QuestRewards.readFromPacket(buf),
                 buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())),
-                QuestPunishments.readFromPacket(buf));
+                QuestPunishments.readFromPacket(buf),buf.readBoolean());
     }
 
-    // Quest Type: normal, preparation solo, preparation all or level.
-    public enum Type {
-        normal, preparation_solo, preparation_all, level;
+    // Quest MultiplayerType: normal, preparation solo, preparation all or level.
+    public enum MultiplayerType {
+        solo,preparation_solo,preparation_multiplayer;
     }
 
 }

@@ -14,6 +14,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.util.Lazy;
+import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
 
 import java.util.ArrayList;
@@ -159,7 +160,7 @@ public class QuestInstance {
     }
 
     public <T extends AbstractCriterionTriggerInstance> boolean check(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
-        if (!hasPlayer(pPlayer) || !status.active) return false;
+        if (!shouldCheck(pPlayer) || !status.active) return false;
 
         boolean update = checkFailure(trigger,pPlayer,pTestTrigger);
         update |= checkCriterias(trigger,pPlayer,pTestTrigger);
@@ -168,6 +169,14 @@ public class QuestInstance {
             updateStatus();
         }
         return update;
+    }
+// solo The quest variables rules follow the first player who accepted the quest except for Death and Respawn.
+    //all  The quest variables rules follow All players who accepted the quest.
+    boolean shouldCheck(ServerPlayer player) {
+       return switch (quest().type()) {
+            case solo,preparation_solo -> player.getUUID().equals(leader);
+            case preparation_multiplayer -> hasPlayer(player);
+        };
     }
 
     public <T extends AbstractCriterionTriggerInstance> boolean checkFailure(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
@@ -243,6 +252,11 @@ public class QuestInstance {
         if (complete) {
             status = Status.COMPLETE;
         }
+    }
+
+    public void grantRewards(ServerPlayer claimingPlayer, TownCampfire townCampfire) {
+        quest().rewards().grant(claimingPlayer,townCampfire,quest().levelUp());
+        removeMember(claimingPlayer);
     }
 
 

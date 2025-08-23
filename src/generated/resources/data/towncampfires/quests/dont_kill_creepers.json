@@ -1,5 +1,4 @@
 {
-  "type": "normal",
   "appearance_conditions": {
     "biome_whitelist": "minecraft:is_overworld",
     "level_range": {
@@ -51,6 +50,8 @@
     "Count": 1,
     "id": "minecraft:gold_ingot"
   },
+  "level_up": false,
+  "multiplayer_type": "preparation_solo",
   "name": "{\"color\":\"gold\",\"text\":\"Don't kill Creepers\"}",
   "punishments": {
     "player_experience": -1000

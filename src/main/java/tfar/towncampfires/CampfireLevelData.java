@@ -17,7 +17,6 @@ import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestInstance;
-import tfar.towncampfires.data.quest.QuestRewards;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.client.S2CQuestInstancePacket;
 
@@ -35,6 +34,11 @@ public class CampfireLevelData extends SavedData {
     Map<UUID,Set<ResourceLocation>> completedQuests = new HashMap<>();
 
     private Map<UUID, TownCampfire> lastVisited = new HashMap<>();
+
+    private Map<ResourceLocation,Set<UUID>> deferredPunishments = new HashMap<>();
+
+
+    private Map<ResourceLocation,Set<UUID>> deferredRewards = new HashMap<>();
 
     public CampfireLevelData(ServerLevel pLevel) {
         this.level = pLevel;
@@ -78,6 +82,11 @@ public class CampfireLevelData extends SavedData {
         setDirty();
     }
 
+    public void addDeferredPunishment(ResourceLocation questID,UUID uuid) {
+        Set<UUID> uuids = deferredPunishments.computeIfAbsent(questID,resourceLocation -> new HashSet<>());
+        uuids.add(uuid);
+    }
+
     public void sendQuestsTo(ServerPlayer player) {
         List<QuestInstance> questInstances = new ArrayList<>();
         for (QuestInstance questInstance : currentQuests) {
@@ -109,7 +118,7 @@ public class CampfireLevelData extends SavedData {
                                 questInstance.removeMember(player);
                                 needUpdates.add(player);
                             } else {//handle offline players
-
+                                addDeferredPunishment(questInstance.questID(),uuid);
                             }
                         }
                     }
@@ -135,13 +144,13 @@ public class CampfireLevelData extends SavedData {
             QuestInstance existing = findExistingQuest(quest, player);
             if (existing == null) {//make a new quest instance
                 switch (quest.type()) {
-                    case normal, level -> {
+                    case solo -> {
                         QuestInstance questInstance = QuestInstance.begin(questID, player.getUUID(),true);
                         currentQuests.add(questInstance);
                         sendQuestsTo(player);
                         setDirty();
                     }
-                    case preparation_solo, preparation_all -> {
+                    case preparation_solo, preparation_multiplayer -> {
                         //check for other existing instances first!
                         boolean wasAdded = false;
                         for (QuestInstance questInstance : this.currentQuests) {
@@ -163,16 +172,14 @@ public class CampfireLevelData extends SavedData {
                 }
             } else {
                 switch (quest.type()) {
-                    case normal -> {
+                    case solo -> {
 
                     }
                     case preparation_solo -> {
                         existing.setStatus(QuestInstance.Status.IN_PROGRESS);
                     }
-                    case preparation_all -> {
+                    case preparation_multiplayer -> {
                         existing.setStatus(QuestInstance.Status.IN_PROGRESS);
-                    }
-                    case level -> {
                     }
                 }
             }
@@ -186,9 +193,7 @@ public class CampfireLevelData extends SavedData {
             TownCampfires.LOGGER.warn("{} Attempted to claim reward for nonexistent quest",player);
         } else {
             if (existing.status() == QuestInstance.Status.COMPLETE && existing.hasPlayer(player)) {
-                QuestRewards questRewards = existing.quest().rewards();
-                questRewards.grant(player,townCampfire,quest.type() == Quest.Type.level);
-                existing.removeMember(player);
+                existing.grantRewards(player,townCampfire);
                 if (existing.getMembers().isEmpty()) {
                     currentQuests.remove(existing);
                 }
@@ -266,12 +271,12 @@ public class CampfireLevelData extends SavedData {
 
     @Override
     public CompoundTag save(CompoundTag pCompoundTag) {
-        ListTag listTag = new ListTag();
+        ListTag campfiresByIndexTag = new ListTag();
 
         for (TownCampfire campfire : campfiresByIndex) {
-            listTag.add(campfire.save());
+            campfiresByIndexTag.add(campfire.save());
         }
-        pCompoundTag.put("campfires",listTag);
+        pCompoundTag.put("campfires",campfiresByIndexTag);
 
 
         CompoundTag tag = new CompoundTag();
@@ -300,6 +305,17 @@ public class CampfireLevelData extends SavedData {
         }
 
         pCompoundTag.put("completed_quests",completedQuestTag);
+
+        CompoundTag deferredPunishmentsTag = new CompoundTag();
+
+        for (Map.Entry<ResourceLocation, Set<UUID>> entry : deferredPunishments.entrySet()) {
+            Set<UUID> uuids = entry.getValue();
+            ListTag listTag1 = new ListTag();
+            for (UUID uuid : uuids) {
+                listTag1.add(StringTag.valueOf(uuid.toString()));
+            }
+            deferredPunishmentsTag.put(entry.getKey().toString(),listTag1);
+        }
 
         return pCompoundTag;
     }

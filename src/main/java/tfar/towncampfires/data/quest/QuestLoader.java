@@ -70,7 +70,7 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
         for (Map.Entry<ResourceLocation,Quest> entry : questMap.entrySet()) {
             ResourceLocation resourceLocation = entry.getKey();
             Quest quest = entry.getValue();
-            if (quest.type() == Quest.Type.level) continue;
+            if (quest.levelUp()) continue;
             QuestAppearanceConditions questAppearanceConditions = quest.appearanceConditions();
             boolean correctBiome = biome.is(questAppearanceConditions.biomeWhitelist())^!questAppearanceConditions.isWhiteList();
             if (!correctBiome)continue;
@@ -108,7 +108,7 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
         for (Map.Entry<ResourceLocation,Quest> entry : questMap.entrySet()) {
             ResourceLocation resourceLocation = entry.getKey();
             Quest quest = entry.getValue();
-            if (quest.type() != Quest.Type.level) continue;
+            if (!quest.levelUp()) continue;
             QuestAppearanceConditions questAppearanceConditions = quest.appearanceConditions();
             boolean correctBiome = biome.is(questAppearanceConditions.biomeWhitelist())^!questAppearanceConditions.isWhiteList();
             if (!correctBiome)continue;

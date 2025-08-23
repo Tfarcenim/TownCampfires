@@ -72,6 +72,7 @@ public class QuestProvider implements DataProvider {
 
         FinishedQuest.builder().title(Component.literal("Don't kill Creepers").withStyle(ChatFormatting.GOLD))
                 .desc(Component.literal("Don't kill any creepers").withStyle(ChatFormatting.DARK_GRAY))
+                .type(Quest.MultiplayerType.preparation_solo)
                 .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
                         KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
                 .addFailureCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
@@ -80,9 +81,20 @@ public class QuestProvider implements DataProvider {
                 .punishment(new QuestPunishments(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE))
                 .save(consumer, TownCampfires.id("dont_kill_creepers"));
 
+        /*FinishedQuest.builder().title(Component.literal("Stay near Campfire").withStyle(ChatFormatting.GOLD))
+                .desc(Component.literal("Stay near campfire").withStyle(ChatFormatting.DARK_GRAY),
+                        Component.literal("for 1 minute").withStyle(ChatFormatting.DARK_GRAY))
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.TICK,
+                        PlayerTrigger.TriggerInstance.located(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
+                .addFailureCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
+                        KilledTrigger.TriggerInstance.playerKilledEntity(EntityPredicate.Builder.entity().of(EntityType.CREEPER)),
+                        Component.literal("Avoid Creeper").withStyle(ChatFormatting.DARK_GRAY)))
+                .punishment(new QuestPunishments(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE))
+                .save(consumer, TownCampfires.id("dont_kill_creepers"));*/
+
 
         FinishedQuest.builder().title(Component.literal("Example Level Quest 0").withStyle(ChatFormatting.RED))
-                .type(Quest.Type.level)
+                .markLevelUp()
                 .desc(Component.literal("Example Level Quest 0 Desc").withStyle(ChatFormatting.DARK_GRAY))
                 .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
                         KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)

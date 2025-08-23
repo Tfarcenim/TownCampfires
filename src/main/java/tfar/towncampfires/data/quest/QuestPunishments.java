@@ -46,14 +46,16 @@ public class QuestPunishments {
     public void punish(ServerPlayer pPlayer, TownCampfire campfire) {
         pPlayer.giveExperiencePoints(this.playerExperience);
         //campfire.giveExperiencePoints(campfireExperience,false);
-        LootContext lootcontext = (new LootContext.Builder(pPlayer.getLevel())).withParameter(LootContextParams.THIS_ENTITY, pPlayer).withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom()).withLuck(pPlayer.getLuck()).create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
-        boolean flag = false;
+        LootContext lootcontext = new LootContext.Builder(pPlayer.getLevel()).withParameter(LootContextParams.THIS_ENTITY, pPlayer)
+                .withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom())
+                .withLuck(pPlayer.getLuck()).create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
+        boolean addedItems = false;
 
         for(ResourceLocation resourcelocation : this.loot) {
             for(ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
                 if (pPlayer.addItem(itemstack)) {
                     pPlayer.level.playSound(null, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.2F, ((pPlayer.getRandom().nextFloat() - pPlayer.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
-                    flag = true;
+                    addedItems = true;
                 } else {
                     ItemEntity itementity = pPlayer.drop(itemstack, false);
                     if (itementity != null) {
@@ -64,7 +66,7 @@ public class QuestPunishments {
             }
         }
 
-        if (flag) {
+        if (addedItems) {
             pPlayer.containerMenu.broadcastChanges();
         }
 

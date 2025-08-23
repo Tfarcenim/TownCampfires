@@ -37,7 +37,7 @@ public class FinishedQuest {
         List<Component> desc;
         QuestAppearanceConditions questAppearanceConditions = new QuestAppearanceConditions(BiomeTags.IS_OVERWORLD,
                 true,BiomeTags.IS_OVERWORLD, IntegerRange.inclusive(0,Integer.MAX_VALUE),1,IntegerRange.inclusive(0,Integer.MAX_VALUE));
-        Quest.Type type = Quest.Type.normal;
+        Quest.MultiplayerType multiplayerType = Quest.MultiplayerType.solo;
 
         List<Pair<QuestCriteria<?>,Integer>> criteria = new ArrayList<>();
 
@@ -46,6 +46,7 @@ public class FinishedQuest {
         QuestRewards rewards = new QuestRewards(100,100, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
 
         QuestPunishments punishments = QuestPunishments.EMPTY;
+        boolean levelUp;
 
         public Builder title(Component title) {
             this.title = title;
@@ -67,8 +68,13 @@ public class FinishedQuest {
             return this;
         }
 
-        public Builder type(Quest.Type type) {
-            this.type = type;
+        public Builder type(Quest.MultiplayerType multiplayerType) {
+            this.multiplayerType = multiplayerType;
+            return this;
+        }
+
+        public Builder markLevelUp() {
+            levelUp = true;
             return this;
         }
 
@@ -105,7 +111,7 @@ public class FinishedQuest {
         }
 
         private FinishedQuest build(ResourceLocation id) {
-            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions,type,criteria,rewards,failure_criteria,punishments));
+            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions, multiplayerType,criteria,rewards,failure_criteria,punishments,levelUp));
         }
     }
 
