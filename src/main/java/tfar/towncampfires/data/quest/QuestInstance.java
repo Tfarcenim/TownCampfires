@@ -174,8 +174,8 @@ public class QuestInstance {
     //all  The quest variables rules follow All players who accepted the quest.
     boolean shouldCheck(ServerPlayer player) {
        return switch (quest().type()) {
-            case solo,preparation_solo -> player.getUUID().equals(leader);
-            case preparation_multiplayer -> hasPlayer(player);
+            case solo, prep_solo -> player.getUUID().equals(leader);
+            case prep_mp -> hasPlayer(player);
         };
     }
 
@@ -203,6 +203,7 @@ public class QuestInstance {
     }
 
     public <T extends AbstractCriterionTriggerInstance> boolean checkCriterias(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
+        if (!status.active) return false;
         Quest quest = quest();
         boolean update = false;
         var criterias = quest.criterias();

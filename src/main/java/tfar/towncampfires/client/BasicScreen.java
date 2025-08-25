@@ -43,6 +43,11 @@ public class BasicScreen extends Screen {
         this.renderLabels(pPoseStack, pMouseX, pMouseY);
     }
 
+    @Override
+    public boolean isPauseScreen() {
+        return false;
+    }
+
     protected void renderLabels(PoseStack pPoseStack, int pMouseX, int pMouseY) {
 
     }

@@ -31,12 +31,21 @@ public class QuestRewards {
     private final ResourceLocation[] recipes;
     private final CommandFunction.CacheableFunction function;
 
-    public QuestRewards(int playerExperience,int campfireExperience, ResourceLocation[] pLoot, ResourceLocation[] pRecipes, CommandFunction.CacheableFunction pFunction) {
+    public QuestRewards(int playerExperience,int campfireExperience, ResourceLocation[] pLoot, ResourceLocation[] pRecipes,
+                        CommandFunction.CacheableFunction pFunction) {
         this.playerExperience = playerExperience;
         this.campfireExperience = campfireExperience;
         this.loot = pLoot;
         this.recipes = pRecipes;
         this.function = pFunction;
+    }
+
+    public int playerExperience() {
+        return playerExperience;
+    }
+
+    public int campfireExperience() {
+        return campfireExperience;
     }
 
     public ResourceLocation[] getRecipes() {
@@ -46,13 +55,16 @@ public class QuestRewards {
     public void grant(ServerPlayer pPlayer, TownCampfire campfire,boolean isLevelup) {
         pPlayer.giveExperiencePoints(this.playerExperience);
         campfire.giveExperiencePoints(campfireExperience,isLevelup);
-        LootContext lootcontext = (new LootContext.Builder(pPlayer.getLevel())).withParameter(LootContextParams.THIS_ENTITY, pPlayer).withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom()).withLuck(pPlayer.getLuck()).create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
+        LootContext lootcontext = (new LootContext.Builder(pPlayer.getLevel())).withParameter(LootContextParams.THIS_ENTITY, pPlayer)
+                .withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom()).withLuck(pPlayer.getLuck())
+                .create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
         boolean flag = false;
 
         for(ResourceLocation resourcelocation : this.loot) {
             for(ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
                 if (pPlayer.addItem(itemstack)) {
-                    pPlayer.level.playSound(null, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.2F, ((pPlayer.getRandom().nextFloat() - pPlayer.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
+                    pPlayer.level.playSound(null, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), SoundEvents.ITEM_PICKUP,
+                            SoundSource.PLAYERS, 0.2F, ((pPlayer.getRandom().nextFloat() - pPlayer.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
                     flag = true;
                 } else {
                     ItemEntity itementity = pPlayer.drop(itemstack, false);
@@ -72,9 +84,9 @@ public class QuestRewards {
             pPlayer.awardRecipesByKey(this.recipes);
         }
 
-        MinecraftServer minecraftserver = pPlayer.server;
-        this.function.get(minecraftserver.getFunctions()).ifPresent((p_9996_) -> {
-            minecraftserver.getFunctions().execute(p_9996_, pPlayer.createCommandSourceStack().withSuppressedOutput().withPermission(2));
+        MinecraftServer server = pPlayer.server;
+        this.function.get(server.getFunctions()).ifPresent(function -> {
+            server.getFunctions().execute(function, pPlayer.createCommandSourceStack().withSuppressedOutput().withPermission(2));
         });
     }
 
@@ -84,11 +96,12 @@ public class QuestRewards {
     }
 
     public void writeToPacket(FriendlyByteBuf buf) {
-
+        buf.writeInt(playerExperience);
+        buf.writeInt(campfireExperience);
     }
 
     public static QuestRewards readFromPacket(FriendlyByteBuf buf) {
-        return EMPTY;
+        return new QuestRewards(buf.readInt(),buf.readInt(),new ResourceLocation[0],new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
     }
 
     public JsonElement serializeToJson() {
@@ -216,7 +229,9 @@ public class QuestRewards {
         }
 
         public QuestRewards build() {
-            return new QuestRewards(this.experience,campfireExperience, this.loot.toArray(new ResourceLocation[0]), this.recipes.toArray(new ResourceLocation[0]), this.function == null ? CommandFunction.CacheableFunction.NONE : new CommandFunction.CacheableFunction(this.function));
+            return new QuestRewards(this.experience,campfireExperience, this.loot.toArray(new ResourceLocation[0]),
+                    this.recipes.toArray(new ResourceLocation[0]),
+                    this.function == null ? CommandFunction.CacheableFunction.NONE : new CommandFunction.CacheableFunction(this.function));
         }
     }
 }

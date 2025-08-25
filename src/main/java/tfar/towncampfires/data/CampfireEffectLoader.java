@@ -49,7 +49,7 @@ public class CampfireEffectLoader extends SimpleJsonResourceReloadListener {
         }
 
         this.campfireEffects = builder.build();
-        LOGGER.info("Loaded {} campfire effects", campfireEffects.size());
+        LOGGER.info("Loaded {} campfire attempts", campfireEffects.size());
     }
 
     public List<ResourceLocation> getEligibleEffects(int level, MobEffectCategory category, Holder<Biome> biome, HolderSet<Biome> nearbyBiomes) {

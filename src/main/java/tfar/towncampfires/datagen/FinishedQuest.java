@@ -32,9 +32,11 @@ public class FinishedQuest {
 
     public static class Builder {
 
-        Component title= Component.literal("Title");
+        Component name = Component.literal("Title");
+        Component compact_name = name;
         ItemStack icon = Items.GOLD_INGOT.getDefaultInstance();
         List<Component> desc;
+        List<Component> compact_desc;
         QuestAppearanceConditions questAppearanceConditions = new QuestAppearanceConditions(BiomeTags.IS_OVERWORLD,
                 true,BiomeTags.IS_OVERWORLD, IntegerRange.inclusive(0,Integer.MAX_VALUE),1,IntegerRange.inclusive(0,Integer.MAX_VALUE));
         Quest.MultiplayerType multiplayerType = Quest.MultiplayerType.solo;
@@ -48,8 +50,18 @@ public class FinishedQuest {
         QuestPunishments punishments = QuestPunishments.EMPTY;
         boolean levelUp;
 
-        public Builder title(Component title) {
-            this.title = title;
+        long weight = 1;
+        int difficulty = 1;
+        int slots = 1;
+        int attempts = 1;
+
+        public Builder name(Component name) {
+            this.name = name;
+            return this;
+        }
+
+        public Builder compactName(Component compactName) {
+            this.compact_name = compactName;
             return this;
         }
 
@@ -60,6 +72,12 @@ public class FinishedQuest {
 
         public Builder desc(Component... desc) {
             this.desc = Arrays.stream(desc).toList();
+            compact_desc = this.desc;
+            return this;
+        }
+
+        public Builder compactDesc(Component... desc) {
+            this.compact_desc = Arrays.stream(desc).toList();
             return this;
         }
 
@@ -106,12 +124,33 @@ public class FinishedQuest {
             return this;
         }
 
+        public Builder weight(int weight) {
+            this.weight = weight;
+            return this;
+        }
+
+        public Builder difficulty(int difficulty) {
+            this.difficulty = difficulty;
+            return this;
+        }
+
+        public Builder slots(int slots) {
+            this.slots = slots;
+            return this;
+        }
+
+        public Builder attempts(int attempts) {
+            this.attempts = attempts;
+            return this;
+        }
+
         public void save(Consumer<FinishedQuest> consumer, ResourceLocation id) {
             consumer.accept(build(id));
         }
 
         private FinishedQuest build(ResourceLocation id) {
-            return new FinishedQuest(id,new Quest(title,icon,desc,questAppearanceConditions, multiplayerType,criteria,rewards,failure_criteria,punishments,levelUp));
+            return new FinishedQuest(id,new Quest(name,icon,desc,questAppearanceConditions, multiplayerType,
+                    criteria,rewards,failure_criteria,punishments,levelUp,weight, compact_name,compact_desc,difficulty,slots,attempts));
         }
     }
 

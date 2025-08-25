@@ -13,6 +13,11 @@
     "weight": 1,
     "whitelist": true
   },
+  "attempts": 1,
+  "compact_desc": [
+    "{\"color\":\"dark_gray\",\"text\":\"Ex Q0 Desc\"}"
+  ],
+  "compact_name": "{\"text\":\"Ex. Q0\"}",
   "criteria": [
     {
       "count": 2,
@@ -26,6 +31,7 @@
   "desc": [
     "{\"color\":\"dark_gray\",\"text\":\"Example Quest 0 Description\"}"
   ],
+  "difficulty": 1,
   "failure_criteria": [],
   "icon": {
     "Count": 1,
@@ -37,5 +43,7 @@
   "rewards": {
     "campfire_experience": 100,
     "player_experience": 100
-  }
+  },
+  "slots": 1,
+  "weight": 1
 }

@@ -7,16 +7,20 @@ import net.minecraft.util.FormattedCharSequence;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestCriteria;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class QuestInfoScreen extends BasicScreen {
     private final TownCampfireScreen parent;
     private final Quest quest;
 
+    final List<String> rightInfo;
+
     protected QuestInfoScreen(Component pTitle, TownCampfireScreen parent, Quest quest) {
         super(pTitle);
         this.parent = parent;
         this.quest = quest;
+        rightInfo = getRightInfo();
     }
 
     protected void renderBg(PoseStack pPoseStack, float pPartialTick, int pMouseX, int pMouseY) {
@@ -34,8 +38,25 @@ public class QuestInfoScreen extends BasicScreen {
     @Override
     protected void renderLabels(PoseStack pPoseStack, int pMouseX, int pMouseY) {
         super.renderLabels(pPoseStack, pMouseX, pMouseY);
-        this.font.draw(pPoseStack, this.title, (float) this.titleLabelX + leftPos, (float) this.titleLabelY + topPos, 0xffffff);
+        renderLeftSideLabels(pPoseStack, pMouseX, pMouseY);
 
+        for (int i = 0; i < rightInfo.size();i++) {
+            String s = rightInfo.get(i);
+            font.draw(pPoseStack, s,(float) this.titleLabelX + leftPos+imageWidth - 12 - font.width(s),(float) this.titleLabelY + topPos+ i * 12,
+                    TownCampfireScreen.DARK_GRAY);
+        }
+    }
+
+    List<String> getRightInfo() {
+        List<String> infos = new ArrayList<>();
+        infos.add("Difficulty: "+quest.difficulty());
+        infos.add("Multiplayer: "+quest.type());
+        infos.add("Slots: "+quest.slots());
+        return infos;
+    }
+
+    void renderLeftSideLabels(PoseStack pPoseStack, int pMouseX, int pMouseY) {
+        this.font.draw(pPoseStack, this.title, (float) this.titleLabelX + leftPos, (float) this.titleLabelY + topPos, 0xffffff);
         int spacing = 12;
 
         int xStart = leftPos + 6;

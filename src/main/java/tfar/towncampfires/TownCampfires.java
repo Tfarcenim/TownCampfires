@@ -105,7 +105,7 @@ public class TownCampfires
         ServerPlayer player = (ServerPlayer) event.getEntity();
         CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(player.server.overworld());
         if (campfireLevelData != null) {
-                campfireLevelData.sendQuestsTo(player);
+                campfireLevelData.sendDataTo(player);
         }
     }
 

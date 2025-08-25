@@ -5,6 +5,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.mojang.datafixers.util.Pair;
+import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.advancements.critereon.DeserializationContext;
 import net.minecraft.network.FriendlyByteBuf;
@@ -20,7 +21,8 @@ import java.util.List;
 public record Quest(Component name, ItemStack icon, List<Component> desc,
                     QuestAppearanceConditions appearanceConditions,MultiplayerType type,
                     List<Pair<QuestCriteria<?>, Integer>> criterias, QuestRewards rewards,
-                    List<Pair<QuestCriteria<?>, Integer>> failureCriterias,QuestPunishments punishments,boolean levelUp) {
+                    List<Pair<QuestCriteria<?>, Integer>> failureCriterias,QuestPunishments punishments,
+                    boolean levelUp,long weight,Component compactName, List<Component> compactDesc,int difficulty,int slots,int attempts) {
 
     //.encodeStart(JsonOps.INSTANCE, quest).resultOrPartial(TownCampfires.LOGGER::error).get().getAsJsonObject();
 
@@ -60,6 +62,20 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
         jsonObject.add("punishments", punishments.serializeToJson());
 
         jsonObject.addProperty("level_up",levelUp);
+        jsonObject.addProperty("weight",weight);
+
+
+        JsonElement element5 = MiscCodecs.COMPONENT_CODEC.encodeStart(JsonOps.INSTANCE, compactName)
+                .resultOrPartial(TownCampfires.LOGGER::error).get();
+        jsonObject.add("compact_name", element5);
+
+        JsonElement element6 = MiscCodecs.COMPONENT_CODEC.listOf().encodeStart(JsonOps.INSTANCE, compactDesc)
+                .resultOrPartial(TownCampfires.LOGGER::error).get();
+        jsonObject.add("compact_desc", element6);
+
+        jsonObject.addProperty("difficulty",difficulty);
+        jsonObject.addProperty("slots",slots);
+        jsonObject.addProperty("attempts",attempts);
 
         return jsonObject;
     }
@@ -104,9 +120,24 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
 
         QuestPunishments punishments = QuestPunishments.deserialize((JsonObject) object.get("punishments"));
 
-        boolean levelUp = object.get("level_up").getAsBoolean();
+        boolean levelUp = GsonHelper.getAsBoolean(object,"level_up",false);
+        int weight = GsonHelper.getAsInt(object,"weight",1);
 
-        return new Quest(name, icon, desc, appearance_conditions, multiplayerType, criterias, rewards,failure_criterias,punishments,levelUp);
+        Component compactName = getOrFallback(object,"compact_name",MiscCodecs.COMPONENT_CODEC,name);
+        List<Component> compactDesc = getOrFallback(object,"compact_desc",MiscCodecs.COMPONENT_CODEC.listOf(),desc);
+
+        int difficulty = GsonHelper.getAsInt(object,"difficulty",1);
+        int slots = GsonHelper.getAsInt(object,"slots",1);
+        int attempts = GsonHelper.getAsInt(object,"attempts",1);
+
+        return new Quest(name, icon, desc, appearance_conditions, multiplayerType, criterias, rewards,failure_criterias,
+                punishments,levelUp,weight,compactName,compactDesc,difficulty,slots,attempts);
+    }
+
+    public static <C> C getOrFallback(JsonObject json,String element,Codec<C> codec,C fallback) {
+        if (!json.has(element)) return fallback;
+        return codec.decode(JsonOps.INSTANCE, json.get(element))
+                .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
     }
 
     static List<Pair<QuestCriteria<?>, Integer>> readCriteria(JsonArray jsonArray,DeserializationContext context) {
@@ -131,11 +162,21 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
             questCriteriaIntegerPair.getFirst().serializeToNetwork(buf1);
             buf1.writeInt(questCriteriaIntegerPair.getSecond());
         });
+        rewards.writeToPacket(buf);
         buf.writeCollection(failureCriterias, (buf1, questCriteriaIntegerPair) -> {
             questCriteriaIntegerPair.getFirst().serializeToNetwork(buf1);
             buf1.writeInt(questCriteriaIntegerPair.getSecond());
         });
+        punishments.writeToPacket(buf);
         buf.writeBoolean(levelUp);
+        buf.writeLong(weight);
+
+        buf.writeComponent(compactName);
+        buf.writeCollection(compactDesc, FriendlyByteBuf::writeComponent);
+
+        buf.writeInt(difficulty);
+        buf.writeInt(slots);
+        buf.writeInt(attempts);
     }
 
     public static Quest fromPacket(FriendlyByteBuf buf) {
@@ -143,12 +184,13 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
                 QuestAppearanceConditions.fromPacket(buf), buf.readEnum(MultiplayerType.class),
                 buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())), QuestRewards.readFromPacket(buf),
                 buf.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt())),
-                QuestPunishments.readFromPacket(buf),buf.readBoolean());
+                QuestPunishments.readFromPacket(buf),buf.readBoolean(),buf.readLong(),buf.readComponent(),
+                buf.readList(FriendlyByteBuf::readComponent),buf.readInt(),buf.readInt(),buf.readInt());
     }
 
     // Quest MultiplayerType: normal, preparation solo, preparation all or level.
     public enum MultiplayerType {
-        solo,preparation_solo,preparation_multiplayer;
+        solo, prep_solo, prep_mp;
     }
 
 }

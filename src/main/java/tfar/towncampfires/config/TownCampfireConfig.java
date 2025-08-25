@@ -42,6 +42,8 @@ public class TownCampfireConfig {
 
         public final ForgeConfigSpec.ConfigValue<List<? extends Integer>> levelup_walls;
 
+        public final ForgeConfigSpec.IntValue slots_per_player;
+
         public Server(ForgeConfigSpec.Builder builder) {
             builder.push("town_campfire_stats");
             defaultNames = ConfigHelper.defineObject(builder,"default_campfire_names", MiscCodecs.COMPONENT_CODEC.listOf(),defaultCampfireNames());
@@ -57,6 +59,9 @@ public class TownCampfireConfig {
 
             refresh_timer = builder.defineInRange("refresh_timer",20 * 60 * 20 * 7L,20,10000000000000L);
             experience_per_level = builder.defineInRange("experience_per_level",5000,1,10000000);
+            levelup_walls = builder.defineList("levelup_walls",() -> levelupWalls(),o -> o instanceof Integer integer && integer > 0);
+
+            slots_per_player = builder.defineInRange("slots_per_player",10,1,Integer.MAX_VALUE);
 
             builder.push("effect_configuration");
 
@@ -68,10 +73,7 @@ public class TownCampfireConfig {
 
             starting_quests = ConfigHelper.defineObject(builder,"starting_quests",IntegerRange.CODEC,new IntegerRange(1,5));
 
-            levelup_walls = builder.defineList("levelup_walls",() -> levelupWalls(),o -> o instanceof Integer integer && integer > 0);
-
             builder.pop();
-
             builder.pop();
         }
 
