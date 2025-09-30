@@ -14,6 +14,7 @@ import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestInstance;
+import tfar.towncampfires.data.quest.criteria.FailureCriteria;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.client.S2CQuestAttemptPacket;
 import tfar.towncampfires.network.client.S2CQuestInstancePacket;
@@ -23,7 +24,7 @@ import java.util.function.Predicate;
 
 public class CampfireLevelData extends SavedData {
 
-    private final ServerLevel level;
+    public final ServerLevel level;
     private List<TownCampfire> campfiresByIndex = new ArrayList<>();
     private transient Map<BlockPos, TownCampfire> campfiresByPos = new HashMap<>();
 
@@ -90,19 +91,72 @@ public class CampfireLevelData extends SavedData {
     public void sendDataTo(ServerPlayer player) {
         List<QuestInstance> questInstances = new ArrayList<>();
         for (QuestInstance questInstance : currentQuests) {
-            if (questInstance.hasPlayer(player) || questInstance.status() == QuestInstance.Status.NOT_STARTED) {//if the player is a member OR if quest can be joined
+            if (questInstance.hasPlayer(player) || questInstance.status() == QuestInstance.Status.PREP) {//if the player is a member OR if quest can be joined
                 questInstances.add(questInstance);
             }
         }
 
-        var map = totalAttempts.getOrDefault(player.getUUID(),Map.of());
+        var map = totalAttempts.getOrDefault(player.getUUID(), Map.of());
         ForgePacketHandler.sendToClient(new S2CQuestAttemptPacket(map), player);
         ForgePacketHandler.sendToClient(new S2CQuestInstancePacket(questInstances), player);
     }
 
+    public void checkDeathCriteria(ServerPlayer player) {
+        List<QuestInstance> toUpdate = new ArrayList<>();
+        for (QuestInstance questInstance : currentQuests) {
+            if (questInstance.status().active) {
+                FailureCriteria failureCriteria = questInstance.quest().failureCriteria();
+                if (failureCriteria.death()) {
+                    questInstance.setStatus(QuestInstance.Status.FAILED);
+                    questInstance.punishMembers(this, player.server);
+                    toUpdate.add(questInstance);
+                }
+            }
+        }
+
+
+        for (QuestInstance questInstance : toUpdate) {
+            markQuestCompleted(player, questInstance.questID());
+            if (questInstance.getMembers().isEmpty()) {
+                currentQuests.remove(questInstance);
+            }
+        }
+
+        for (ServerPlayer play : player.server.getPlayerList().getPlayers()) {
+            sendDataTo(play);
+        }
+    }
+
+    public void checkTimeCriteria() {
+        List<QuestInstance> toUpdate = new ArrayList<>();
+        for (QuestInstance questInstance : currentQuests) {
+            if (questInstance.status().active) {
+                if (questInstance.timeUp(level.getGameTime())) {
+                    questInstance.setStatus(QuestInstance.Status.FAILED);
+                    questInstance.punishMembers(this ,level.getServer());
+                    toUpdate.add(questInstance);
+                }
+            }
+        }
+
+        for (QuestInstance questInstance : toUpdate) {
+            List<UUID> members = questInstance.getMembers();
+            for (UUID uuid : members) {
+                markQuestCompleted(uuid, questInstance.questID());
+            }
+            if (questInstance.getMembers().isEmpty()) {
+                currentQuests.remove(questInstance);
+            }
+        }
+        if (!toUpdate.isEmpty()) {
+            updatePlayers = true;
+            setDirty();
+        }
+    }
+
     public <T extends AbstractCriterionTriggerInstance> void
     checkQuests(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
-        List<QuestInstance> toRemove = new ArrayList<>();
+        List<QuestInstance> toUpdate = new ArrayList<>();
         List<ServerPlayer> needUpdates = new ArrayList<>();
         for (QuestInstance questInstance : currentQuests) {
             if (questInstance.status().active) {
@@ -110,28 +164,19 @@ public class CampfireLevelData extends SavedData {
                 if (check) {
                     needUpdates.add(pPlayer);
                     if (questInstance.status() == QuestInstance.Status.FAILED) {
-                        questInstance.quest().punishments().punish(pPlayer, null);
-                        questInstance.removeMember(pPlayer);
-                        toRemove.add(questInstance);
+                        toUpdate.add(questInstance);
                         MinecraftServer server = pPlayer.server;
-                        for (UUID uuid : questInstance.getMembers()) {
-                            ServerPlayer player = server.getPlayerList().getPlayer(uuid);
-                            if (player != null) {
-                                questInstance.quest().punishments().punish(player, null);
-                                questInstance.removeMember(player);
-                                needUpdates.add(player);
-                            } else {//handle offline players
-                                addDeferredPunishment(questInstance.questID(), uuid);
-                            }
-                        }
+                        questInstance.punishMembers(this, server);
                     }
                 }
             }
         }
         for (ServerPlayer player : needUpdates) {
-            for (QuestInstance questInstance : toRemove) {
+            for (QuestInstance questInstance : toUpdate) {
                 markQuestCompleted(player, questInstance.questID());
-                currentQuests.remove(questInstance);
+                if (questInstance.getMembers().isEmpty()) {
+                    currentQuests.remove(questInstance);
+                }
             }
             sendDataTo(player);
         }
@@ -155,20 +200,20 @@ public class CampfireLevelData extends SavedData {
         return quest.slots() + getUsedSlots(player) <= TownCampfireConfig.CONFIG.slots_per_player.get();
     }
 
-    public void addAttempt(ServerPlayer player,ResourceLocation questID){
-        addAttempt(player.getUUID(),questID);
+    public void addAttempt(ServerPlayer player, ResourceLocation questID) {
+        addAttempt(player.getUUID(), questID);
     }
 
     public void syncAttempts(UUID player) {
         ServerPlayer player1 = level.getServer().getPlayerList().getPlayer(player);
-        if (player1!= null) {
-            ForgePacketHandler.sendToClient(new S2CQuestAttemptPacket(totalAttempts.getOrDefault(player,Map.of())),player1);
+        if (player1 != null) {
+            ForgePacketHandler.sendToClient(new S2CQuestAttemptPacket(totalAttempts.getOrDefault(player, Map.of())), player1);
         }
     }
 
-    public void addAttempt(UUID player,ResourceLocation questID){
-        Map<ResourceLocation,Integer> attempt = totalAttempts.computeIfAbsent(player,uuid -> new HashMap<>());
-        attempt.put(questID,attempt.getOrDefault(questID,0)+1);
+    public void addAttempt(UUID player, ResourceLocation questID) {
+        Map<ResourceLocation, Integer> attempt = totalAttempts.computeIfAbsent(player, uuid -> new HashMap<>());
+        attempt.put(questID, attempt.getOrDefault(questID, 0) + 1);
         syncAttempts(player);
     }
 
@@ -186,10 +231,9 @@ public class CampfireLevelData extends SavedData {
                 if (existing == null) {//make a new quest instance
                     switch (quest.type()) {
                         case solo -> {
-                            QuestInstance questInstance = QuestInstance.begin(questID, player.getUUID(), true);
-                            addAttempt(player,questID);
+                            QuestInstance questInstance = QuestInstance.create(this, questID, player.getUUID(), true);
                             currentQuests.add(questInstance);
-                            sendDataTo(player);
+                            updatePlayers = true;
                             setDirty();
                         }
                         case prep_solo, prep_mp -> {
@@ -200,14 +244,16 @@ public class CampfireLevelData extends SavedData {
                                 if (quest1 == quest && !questInstance.hasPlayer(player)) {
                                     questInstance.addPlayer(player);
                                     wasAdded = true;
+                                    updatePlayers = true;
                                     setDirty();
                                     break;
                                 }
                             }
 
                             if (!wasAdded) {
-                                QuestInstance questInstance = QuestInstance.begin(questID, player.getUUID(), false);
+                                QuestInstance questInstance = QuestInstance.create(this, questID, player.getUUID(), false);
                                 currentQuests.add(questInstance);
+                                updatePlayers = true;
                                 setDirty();
                             }
                         }
@@ -219,11 +265,27 @@ public class CampfireLevelData extends SavedData {
                         }
                         case prep_solo, prep_mp -> {
                             existing.setStatus(QuestInstance.Status.IN_PROGRESS);
-                            existing.getMembers().forEach(uuid -> addAttempt(uuid,existing.questID()));
+                            existing.begin(this);
+                            updatePlayers = true;
+                            setDirty();
                         }
                     }
                 }
             }
+        }
+    }
+
+    boolean updatePlayers;
+
+    @Override
+    public void setDirty() {
+        super.setDirty();
+        if (updatePlayers) {
+            MinecraftServer server = level.getServer();
+            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+                sendDataTo(player);
+            }
+            updatePlayers = false;
         }
     }
 
@@ -248,6 +310,11 @@ public class CampfireLevelData extends SavedData {
 
     public void markQuestCompleted(ServerPlayer player, ResourceLocation questID) {
         Set<ResourceLocation> set = completedQuests.computeIfAbsent(player.getUUID(), k -> new HashSet<>());
+        set.add(questID);
+    }
+
+    public void markQuestCompleted(UUID uuid, ResourceLocation questID) {
+        Set<ResourceLocation> set = completedQuests.computeIfAbsent(uuid, k -> new HashSet<>());
         set.add(questID);
     }
 
@@ -319,12 +386,12 @@ public class CampfireLevelData extends SavedData {
         for (String key : totalAttemptsTag.getAllKeys()) {
             UUID uuid = UUID.fromString(key);
             CompoundTag rlTag = totalAttemptsTag.getCompound(key);
-            Map<ResourceLocation,Integer> map = new HashMap<>();
+            Map<ResourceLocation, Integer> map = new HashMap<>();
             for (String t : rlTag.getAllKeys()) {
                 int i = rlTag.getInt(t);
-                map.put(new ResourceLocation(t),i);
+                map.put(new ResourceLocation(t), i);
             }
-            totalAttempts.put(uuid,map);
+            totalAttempts.put(uuid, map);
         }
     }
 
@@ -390,30 +457,43 @@ public class CampfireLevelData extends SavedData {
             if (locationIntegerMap != null) {
                 CompoundTag rlTag = new CompoundTag();
 
-                for (Map.Entry<ResourceLocation,Integer> entry1 : locationIntegerMap.entrySet()) {
+                for (Map.Entry<ResourceLocation, Integer> entry1 : locationIntegerMap.entrySet()) {
                     rlTag.put(entry1.getKey().toString(), IntTag.valueOf(entry1.getValue()));
                 }
                 attemptsTag.put(entry.getKey().toString(), rlTag);
             }
         }
 
-        tag.put("total_attempts",attemptsTag);
+        tag.put("total_attempts", attemptsTag);
 
     }
 
     public void tick() {
         boolean shouldRefresh = level.getGameTime() % TownCampfireConfig.CONFIG.refresh_timer.get() == 0;
-
         if (shouldRefresh) {
-            completedQuests.clear();
-            totalAttempts.clear();
-            List<ServerPlayer> players = level.getServer().getPlayerList().getPlayers();
-            players.forEach(player -> syncAttempts(player.getUUID()));
-            setDirty();
+            refresh();
         }
+        checkTimeCriteria();
+    }
+
+    public void refresh() {
+        completedQuests.clear();
+        totalAttempts.clear();
+        List<ServerPlayer> players = level.getServer().getPlayerList().getPlayers();
+        players.forEach(player -> syncAttempts(player.getUUID()));
+        setDirty();
 
         for (TownCampfire campfire : campfiresByIndex) {
-            campfire.update(level, shouldRefresh);
+            campfire.update(level, true);
         }
     }
+
+    public void reset() {
+        currentQuests.clear();
+        totalAttempts.clear();
+        completedQuests.clear();
+        level.getServer().getPlayerList().getPlayers().forEach(this::sendDataTo);
+        setDirty();
+    }
 }
+

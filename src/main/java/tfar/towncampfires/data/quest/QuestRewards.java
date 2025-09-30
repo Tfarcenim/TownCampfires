@@ -1,6 +1,5 @@
 package tfar.towncampfires.data.quest;
 
-import com.google.common.collect.Lists;
 import com.google.gson.*;
 import net.minecraft.commands.CommandFunction;
 import net.minecraft.network.FriendlyByteBuf;
@@ -16,28 +15,33 @@ import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import tfar.towncampfires.TownCampfire;
+import tfar.towncampfires.compat.GameStagesCompat;
+import tfar.towncampfires.compat.LoadedMods;
 
-import javax.annotation.Nullable;
 import java.util.Arrays;
-import java.util.List;
 
 public class QuestRewards {
 
 
-    public static final QuestRewards EMPTY = new QuestRewards(0,0, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
+    public static final QuestRewards EMPTY = new QuestRewards(0,0, new ResourceLocation[0], new ResourceLocation[0],
+            CommandFunction.CacheableFunction.NONE,new String[0],new String[0]);
     private final int playerExperience;
     private final int campfireExperience;
     private final ResourceLocation[] loot;
     private final ResourceLocation[] recipes;
     private final CommandFunction.CacheableFunction function;
+    private final String[] addGameStages;
+    private final String[] removeGameStages;
 
     public QuestRewards(int playerExperience,int campfireExperience, ResourceLocation[] pLoot, ResourceLocation[] pRecipes,
-                        CommandFunction.CacheableFunction pFunction) {
+                        CommandFunction.CacheableFunction pFunction,String[] addGameStages,String[] removeGameStages) {
         this.playerExperience = playerExperience;
         this.campfireExperience = campfireExperience;
         this.loot = pLoot;
         this.recipes = pRecipes;
         this.function = pFunction;
+        this.addGameStages = addGameStages;
+        this.removeGameStages = removeGameStages;
     }
 
     public int playerExperience() {
@@ -90,6 +94,56 @@ public class QuestRewards {
         });
     }
 
+    public void punish(ServerPlayer pPlayer, TownCampfire campfire) {
+        pPlayer.giveExperiencePoints(this.playerExperience);
+        //campfire.giveExperiencePoints(campfireExperience,false);
+        LootContext lootcontext = new LootContext.Builder(pPlayer.getLevel()).withParameter(LootContextParams.THIS_ENTITY, pPlayer)
+                .withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom())
+                .withLuck(pPlayer.getLuck()).create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
+        boolean addedItems = false;
+
+        for(ResourceLocation resourcelocation : this.loot) {
+            for(ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
+                if (pPlayer.addItem(itemstack)) {
+                    pPlayer.level.playSound(null, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.2F, ((pPlayer.getRandom().nextFloat() - pPlayer.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
+                    addedItems = true;
+                } else {
+                    ItemEntity itementity = pPlayer.drop(itemstack, false);
+                    if (itementity != null) {
+                        itementity.setNoPickUpDelay();
+                        itementity.setOwner(pPlayer.getUUID());
+                    }
+                }
+            }
+        }
+
+        if (addedItems) {
+            pPlayer.containerMenu.broadcastChanges();
+        }
+
+        if (this.recipes.length > 0) {
+            pPlayer.awardRecipesByKey(this.recipes);
+        }
+
+        MinecraftServer minecraftserver = pPlayer.server;
+        this.function.get(minecraftserver.getFunctions()).ifPresent((p_9996_) -> {
+            minecraftserver.getFunctions().execute(p_9996_, pPlayer.createCommandSourceStack().withSuppressedOutput().withPermission(2));
+        });
+
+        if (LoadedMods.gamestages.loaded) {
+            GameStagesCompat.onPlayersCompleteQuest(pPlayer,this);
+        }
+    }
+
+
+    public String[] getAddGameStages() {
+        return addGameStages;
+    }
+
+    public String[] getRemoveGameStages() {
+        return removeGameStages;
+    }
+
     public String toString() {
         return "QuestRewards{experience=" + this.playerExperience + ", loot=" + Arrays.toString(this.loot) +
                 ", recipes=" + Arrays.toString(this.recipes) + ", function=" + this.function + "}";
@@ -101,7 +155,7 @@ public class QuestRewards {
     }
 
     public static QuestRewards readFromPacket(FriendlyByteBuf buf) {
-        return new QuestRewards(buf.readInt(),buf.readInt(),new ResourceLocation[0],new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
+        return new QuestRewards(buf.readInt(),buf.readInt(),new ResourceLocation[0],new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,new String[0],new String[0]);
     }
 
     public JsonElement serializeToJson() {
@@ -141,11 +195,31 @@ public class QuestRewards {
                 jsonobject.addProperty("function", this.function.getId().toString());
             }
 
+            if (addGameStages.length > 0) {
+                JsonArray jsonArray = new JsonArray();
+                for(String s : this.addGameStages) {
+                    jsonArray.add(s);
+                }
+                jsonobject.add(ADD_STAGES, jsonArray);
+            }
+
+            if (removeGameStages.length > 0) {
+                JsonArray jsonArray = new JsonArray();
+                for(String s : this.removeGameStages) {
+                    jsonArray.add(s);
+                }
+                jsonobject.add(REMOVE_STAGES, jsonArray);
+            }
+
             return jsonobject;
         }
     }
 
+    static String ADD_STAGES = "add_gamestages";
+    static String REMOVE_STAGES = "remove_gamestages";
+
     public static QuestRewards deserialize(JsonObject pJson) throws JsonParseException {
+        if(pJson == null) return EMPTY;
         int experience = GsonHelper.getAsInt(pJson, "player_experience", 0);
         int campfireExperience = GsonHelper.getAsInt(pJson, "campfire_experience", 0);
         JsonArray jsonarray = GsonHelper.getAsJsonArray(pJson, "loot", new JsonArray());
@@ -169,69 +243,20 @@ public class QuestRewards {
             commandfunction$cacheablefunction = CommandFunction.CacheableFunction.NONE;
         }
 
-        return new QuestRewards(experience,campfireExperience, aresourcelocation, aresourcelocation1, commandfunction$cacheablefunction);
+        JsonArray jsonarrayAdd = GsonHelper.getAsJsonArray(pJson, ADD_STAGES, new JsonArray());
+        String[] addStages = toArray(jsonarrayAdd);
+
+        JsonArray jsonarrayRemove = GsonHelper.getAsJsonArray(pJson, REMOVE_STAGES, new JsonArray());
+        String[] removeStages = toArray(jsonarrayRemove);
+
+        return new QuestRewards(experience,campfireExperience, aresourcelocation, aresourcelocation1, commandfunction$cacheablefunction,addStages,removeStages);
     }
 
-    public static class Builder {
-        private int experience;
-        private int campfireExperience;
-        private final List<ResourceLocation> loot = Lists.newArrayList();
-        private final List<ResourceLocation> recipes = Lists.newArrayList();
-        @Nullable
-        private ResourceLocation function;
-
-        /**
-         * Creates a new builder with the given amount of experience as a reward
-         */
-        public static Builder experience(int pExperience) {
-            return (new Builder()).addExperience(pExperience);
+    public static String[] toArray(JsonArray array) {
+        String[] strings = new String[array.size()];
+        for (int i = 0; i < strings.length;i++)  {
+            strings[i] = array.get(i).getAsString();
         }
-
-        /**
-         * Adds the given amount of experience. (Not a direct setter)
-         */
-        public Builder addExperience(int pExperience) {
-            this.experience += pExperience;
-            return this;
-        }
-
-        public static Builder loot(ResourceLocation pLootTableId) {
-            return (new Builder()).addLootTable(pLootTableId);
-        }
-
-        public Builder addLootTable(ResourceLocation pLootTableId) {
-            this.loot.add(pLootTableId);
-            return this;
-        }
-
-        /**
-         * Creates a new builder with the given recipe as a reward.
-         */
-        public static Builder recipe(ResourceLocation pRecipeId) {
-            return (new Builder()).addRecipe(pRecipeId);
-        }
-
-        /**
-         * Adds the given recipe to the rewards.
-         */
-        public Builder addRecipe(ResourceLocation pRecipeId) {
-            this.recipes.add(pRecipeId);
-            return this;
-        }
-
-        public static Builder function(ResourceLocation pFunctionId) {
-            return (new Builder()).runs(pFunctionId);
-        }
-
-        public Builder runs(ResourceLocation pFunctionId) {
-            this.function = pFunctionId;
-            return this;
-        }
-
-        public QuestRewards build() {
-            return new QuestRewards(this.experience,campfireExperience, this.loot.toArray(new ResourceLocation[0]),
-                    this.recipes.toArray(new ResourceLocation[0]),
-                    this.function == null ? CommandFunction.CacheableFunction.NONE : new CommandFunction.CacheableFunction(this.function));
-        }
+        return strings;
     }
 }

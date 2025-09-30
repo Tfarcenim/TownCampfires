@@ -18,10 +18,12 @@ import org.slf4j.Logger;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestCriteria;
-import tfar.towncampfires.data.quest.QuestPunishments;
+import tfar.towncampfires.data.quest.QuestRewards;
+import tfar.towncampfires.data.quest.criteria.FailureCriteria;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -58,21 +60,27 @@ public class QuestProvider implements DataProvider {
         
         int count = 2;
         
-        FinishedQuest.builder().name(Component.literal("Example Quest 0").withStyle(ChatFormatting.RED))
-                .compactName(Component.literal("Ex. Q0"))
+        FinishedQuest.builder().name(Component.literal("Example Quest 0").withStyle(ChatFormatting.RED),Component.literal("Ex. Q0"))
                 .desc(Component.literal("Example Quest 0 Description").withStyle(ChatFormatting.DARK_GRAY))
                 .compactDesc(Component.literal("Ex Q0 Desc").withStyle(ChatFormatting.DARK_GRAY))
                 .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(),
                         Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
+                .addStages("Quest 1")
+                .rewards(
+                        new QuestRewards(100,100,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
+                                new String[]{"Completed Quest 1"},new String[]{"Quest 1"}))
+                .punishment(
+                        new QuestRewards(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
+                                new String[]{"Failed Quest 1"},new String[]{"Quest 1"}))
                 .save(consumer, TownCampfires.id("example_quest_0"));
 
-        FinishedQuest.builder().name(Component.literal("Example Quest 1").withStyle(ChatFormatting.GOLD))
+        FinishedQuest.builder().name(Component.literal("Example Quest 1").withStyle(ChatFormatting.GOLD),null)
                 .desc(Component.literal("Example Quest 1 Description").withStyle(ChatFormatting.DARK_GRAY))
                 .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
                         KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
                 .save(consumer, TownCampfires.id("example_quest_1"));
 
-        FinishedQuest.builder().name(Component.literal("Don't kill Creepers").withStyle(ChatFormatting.GOLD))
+        FinishedQuest.builder().name(Component.literal("Don't kill Creepers").withStyle(ChatFormatting.GOLD),null)
                 .desc(Component.literal("Don't kill any creepers").withStyle(ChatFormatting.DARK_GRAY))
                 .slots(20)
                 .attempts(0)
@@ -82,8 +90,24 @@ public class QuestProvider implements DataProvider {
                 .addFailureCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
                         KilledTrigger.TriggerInstance.playerKilledEntity(EntityPredicate.Builder.entity().of(EntityType.CREEPER)),
                         Component.literal("Avoid Creeper").withStyle(ChatFormatting.DARK_GRAY)))
-                .punishment(new QuestPunishments(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE))
+                .punishment(
+                        new QuestRewards(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
+                                new String[0],new String[0]))
                 .save(consumer, TownCampfires.id("dont_kill_creepers"));
+
+        FinishedQuest.builder().name(Component.literal("Don't die").withStyle(ChatFormatting.GOLD),null)
+                .desc(Component.literal("Kill zombie without dying").withStyle(ChatFormatting.DARK_GRAY))
+                .slots(1)
+                .attempts(1)
+                .type(Quest.MultiplayerType.prep_solo)
+                .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
+                        KilledTrigger.TriggerInstance.playerKilledEntity(EntityPredicate.Builder.entity().of(EntityType.CREEPER)),
+                        Component.literal("Kill Zombie").withStyle(ChatFormatting.DARK_GRAY)),count)
+                .setFailureCriteria(new FailureCriteria(new ArrayList<>(),true,1000,new ArrayList<>(),new ArrayList<>()))
+                .punishment(
+                        new QuestRewards(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
+                                new String[0],new String[0]))
+                .save(consumer, TownCampfires.id("kill_zombie"));
 
         /*FinishedQuest.builder().title(Component.literal("Stay near Campfire").withStyle(ChatFormatting.GOLD))
                 .desc(Component.literal("Stay near campfire").withStyle(ChatFormatting.DARK_GRAY),
@@ -97,8 +121,7 @@ public class QuestProvider implements DataProvider {
                 .save(consumer, TownCampfires.id("dont_kill_creepers"));*/
 
 
-        FinishedQuest.builder().name(Component.literal("Example Level Quest 0").withStyle(ChatFormatting.RED))
-                .compactName(Component.literal("Ex. Lvl Q0"))
+        FinishedQuest.builder().name(Component.literal("Example Level Quest 0").withStyle(ChatFormatting.RED), Component.literal("Ex. Lvl Q0"))
                 .markLevelUp()
                 .desc(Component.literal("Example Level Quest 0 Desc").withStyle(ChatFormatting.DARK_GRAY))
                 .compactDesc(Component.literal("Ex. Lvl Q0 Desc").withStyle(ChatFormatting.DARK_GRAY))

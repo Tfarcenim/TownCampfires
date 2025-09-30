@@ -29,6 +29,7 @@ import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
 import tfar.towncampfires.network.server.C2STownCampfireQuestPacket;
+import tfar.towncampfires.utils.TextComponents;
 import tfar.towncampfires.utils.Utils;
 
 import javax.annotation.Nullable;
@@ -140,7 +141,7 @@ public class TownCampfireScreen extends BasicScreen {
         gear = new ImageButton(leftPos+imageWidth/2 + 32+22 * 2,threeBYPos,20,20,0,0,0,TownCampfires.id("textures/gui/settings.png"),20,20,b->{});
         addRenderableWidget(gear);
 
-        startQuest = new Button(leftPos + imageWidth/2+16,topPos+imageHeight - 25,60,20,Component.literal("Start Quest"),
+        startQuest = new Button(leftPos + imageWidth/2+16,topPos+imageHeight - 25,60,20, TextComponents.START_QUEST,
                 b -> pressStart(), this::startQuestTooltip);
         addRenderableWidget(startQuest);
 
@@ -186,6 +187,13 @@ public class TownCampfireScreen extends BasicScreen {
             ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(TownCampfiresClient.clientLookup(selected.quest),townCampfire.location(),
                     C2STownCampfireQuestPacket.Type.START));
             startQuest.active = false;
+        } else {
+            ActiveQuestWidget.ActiveQuestEntry activeSelected = activeQuestWidget.getSelected();
+            if (activeSelected != null) {
+                ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(activeSelected.questInstance.questID(), townCampfire.location(),
+                        C2STownCampfireQuestPacket.Type.START));
+                startQuest.active = false;
+            }
         }
     }
 
@@ -317,7 +325,6 @@ public class TownCampfireScreen extends BasicScreen {
                             int xStart = leftPos + imageWidth/2 ;
                             int yStart = topPos+TAB_HEIGHT+4;
 
-                            int yLine = 0;
                             itemRenderer.renderAndDecorateFakeItem(quest.icon(),xStart,yStart);
 
                             font.draw(pPoseStack, quest.compactName(),xStart+20,yStart,0xffffff);
@@ -335,18 +342,14 @@ public class TownCampfireScreen extends BasicScreen {
                                 QuestCriteria<?> criteria = entry.getFirst();
                                 int count = entry.getSecond();
 
-                                Integer progress = questInstance.progress().isEmpty() ? 0 : questInstance.progress().get(i);
+                                int progress = questInstance.progress().isEmpty() ? 0 : questInstance.progress().get(i);
 
                                 font.draw(pPoseStack,criteria.desc().copy().append(" "+progress+"/"+count),xStart,yStart + completeY +spacing +  spacing * i,0xffffff);
                             }
 
-                            yLine = yStart+110+questInstance.quest().criterias().size()*spacing;
+                            int yLine = yStart + 110 + questInstance.quest().criterias().size() * spacing;
 
                             font.draw(pPoseStack,Component.literal("Members"),xStart,yLine,DARK_GRAY);
-
-                            yLine+=spacing;
-
-                            font.draw(pPoseStack,UsernameCache.getLastKnownUsername(questInstance.leader()),xStart,yLine,DARK_GRAY);
 
                             yLine+=spacing;
 
@@ -383,7 +386,7 @@ public class TownCampfireScreen extends BasicScreen {
                             Component attempts = Component.literal("Attempts:"+quest.attempts());
                             font.draw(pPoseStack,attempts,xStart+imageWidth/2 - 4 - font.width(attempts),yStart+completeY+12,DARK_GRAY);
 
-                            Component slots = Component.literal("Slots:"+quest.rewards().campfireExperience());
+                            Component slots = Component.literal("Slots:"+quest.slots());
                             font.draw(pPoseStack,slots,xStart+imageWidth/2 - 4 - font.width(slots),yStart+completeY+12*2,DARK_GRAY);
 
                             Component xp = Component.literal("XP:"+quest.rewards().campfireExperience());
@@ -497,6 +500,10 @@ public class TownCampfireScreen extends BasicScreen {
         QuestWidget.QuestEntry selected = questWidget.getSelected();
         startQuest.visible = visible && questTab==QuestTab.available && selected != null && isQuestAvailable(selected.quest);
         startQuest.active = startQuest.visible && TownCampfiresClient.hasEnoughSlots(selected.quest) && TownCampfiresClient.canAttempt(selected.questID);
+        if (selected != null && selected.quest != null) {
+            boolean needsPrep = selected.quest.type() != Quest.MultiplayerType.solo;
+            startQuest.setMessage(needsPrep ? TextComponents.PREP_QUEST : TextComponents.START_QUEST);
+        }
     }
 
 
@@ -829,9 +836,17 @@ public class TownCampfireScreen extends BasicScreen {
         public void setSelected(@org.jetbrains.annotations.Nullable ActiveQuestEntry pSelected) {
             super.setSelected(pSelected);
             if (pSelected != null) {
-                finishQuest.visible = true;
-                info.visible = true;
-                finishQuest.active = pSelected.questInstance.status() == QuestInstance.Status.COMPLETE;
+                QuestInstance questInstance = pSelected.questInstance;
+                if (questInstance.status() == QuestInstance.Status.PREP) {
+                    finishQuest.visible = false;
+                    startQuest.visible = true;
+                    startQuest.active = true;
+                    startQuest.setMessage(TextComponents.START_QUEST);
+                } else if (questInstance.status() == QuestInstance.Status.IN_PROGRESS) {
+                    finishQuest.visible = true;
+                    info.visible = true;
+                    finishQuest.active = pSelected.questInstance.status() == QuestInstance.Status.COMPLETE;
+                }
             }
         }
 

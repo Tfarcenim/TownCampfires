@@ -8,11 +8,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.config.IntegerRange;
 import tfar.towncampfires.data.quest.*;
+import tfar.towncampfires.data.quest.criteria.FailureCriteria;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -43,25 +46,23 @@ public class FinishedQuest {
 
         List<Pair<QuestCriteria<?>,Integer>> criteria = new ArrayList<>();
 
-        List<Pair<QuestCriteria<?>,Integer>> failure_criteria = new ArrayList<>();
+        FailureCriteria failureCriteria = FailureCriteria.EMPTY;
 
-        QuestRewards rewards = new QuestRewards(100,100, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE);
+        QuestRewards rewards = new QuestRewards(100,100, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
+                new String[0],new String[0]);
 
-        QuestPunishments punishments = QuestPunishments.EMPTY;
+        QuestRewards punishments = QuestRewards.EMPTY;
         boolean levelUp;
 
         long weight = 1;
         int difficulty = 1;
         int slots = 1;
         int attempts = 1;
+        final List<String> stages = new ArrayList<>();
 
-        public Builder name(Component name) {
+        public Builder name(Component name, @Nullable Component compactName) {
             this.name = name;
-            return this;
-        }
-
-        public Builder compactName(Component compactName) {
-            this.compact_name = compactName;
+            compact_name = compactName != null ? compactName : name;
             return this;
         }
 
@@ -115,11 +116,17 @@ public class FinishedQuest {
         }
 
         public Builder addFailureCriteria(QuestCriteria<?> criteria,int count) {
-            this.failure_criteria.add(Pair.of(criteria,count));
+
+            this.failureCriteria.custom().add(Pair.of(criteria,count));
             return this;
         }
 
-        public Builder punishment(QuestPunishments punishments) {
+        public Builder setFailureCriteria(FailureCriteria failureCriteria) {
+            this.failureCriteria = failureCriteria;
+            return this;
+        }
+
+        public Builder punishment(QuestRewards punishments) {
             this.punishments = punishments;
             return this;
         }
@@ -144,13 +151,18 @@ public class FinishedQuest {
             return this;
         }
 
+        public Builder addStages(String... stages) {
+            Collections.addAll(this.stages, stages);
+            return this;
+        }
+
         public void save(Consumer<FinishedQuest> consumer, ResourceLocation id) {
             consumer.accept(build(id));
         }
 
         private FinishedQuest build(ResourceLocation id) {
             return new FinishedQuest(id,new Quest(name,icon,desc,questAppearanceConditions, multiplayerType,
-                    criteria,rewards,failure_criteria,punishments,levelUp,weight, compact_name,compact_desc,difficulty,slots,attempts));
+                    criteria,rewards, failureCriteria,punishments,levelUp,weight, compact_name,compact_desc,difficulty,slots,attempts,stages));
         }
     }
 

@@ -86,7 +86,7 @@ public class QuestInfoScreen extends BasicScreen {
         font.draw(pPoseStack, Component.literal("Fail Conditions"), xStart, yLine, TownCampfireScreen.DARK_GRAY);
         yLine += spacing;
 
-        List<Pair<QuestCriteria<?>, Integer>> failCriterias = quest.failureCriterias();
+        List<Pair<QuestCriteria<?>, Integer>> failCriterias = quest.failureCriteria().custom();
         for (int i = 0; i < failCriterias.size(); i++) {
             Pair<QuestCriteria<?>, Integer> entry = failCriterias.get(i);
             QuestCriteria<?> criteria = entry.getFirst();

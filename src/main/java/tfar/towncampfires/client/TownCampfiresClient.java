@@ -109,7 +109,8 @@ public class TownCampfiresClient {
         for (int i = 0; i < currentQuests.size();i++) {
             QuestInstance questInstance = currentQuests.get(i);
             Quest quest = questInstance.quest();
-            font.draw(poseStack,quest.name(),5,startY+i * 20,0xffffff);
+
+            font.draw(poseStack,quest.name().copy().append(questInstance.status() == QuestInstance.Status.PREP ? " (Prep)":""),5,startY+i * 20,0xffffff);
             for (int j = 0 ; j < quest.criterias().size();j++) {
                 Pair<QuestCriteria<?>, Integer> questCriteriaIntegerPair = quest.criterias().get(j);
                 int needed= questCriteriaIntegerPair.getSecond();

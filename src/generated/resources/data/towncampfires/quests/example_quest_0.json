@@ -32,7 +32,10 @@
     "{\"color\":\"dark_gray\",\"text\":\"Example Quest 0 Description\"}"
   ],
   "difficulty": 1,
-  "failure_criteria": [],
+  "failure_criteria": {
+    "death": false,
+    "timer": -1
+  },
   "icon": {
     "Count": 1,
     "id": "minecraft:gold_ingot"
@@ -40,9 +43,24 @@
   "level_up": false,
   "multiplayer_type": "solo",
   "name": "{\"color\":\"red\",\"text\":\"Example Quest 0\"}",
+  "punishments": {
+    "add_gamestages": [
+      "Failed Quest 1"
+    ],
+    "player_experience": -1000,
+    "remove_gamestages": [
+      "Quest 1"
+    ]
+  },
   "rewards": {
+    "add_gamestages": [
+      "Completed Quest 1"
+    ],
     "campfire_experience": 100,
-    "player_experience": 100
+    "player_experience": 100,
+    "remove_gamestages": [
+      "Quest 1"
+    ]
   },
   "slots": 1,
   "weight": 1

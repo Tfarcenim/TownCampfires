@@ -12,14 +12,16 @@ import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.util.Lazy;
+import tfar.towncampfires.CampfireLevelData;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
+import tfar.towncampfires.compat.GameStagesCompat;
+import tfar.towncampfires.compat.LoadedMods;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Predicate;
 
 public class QuestInstance {
@@ -35,14 +37,29 @@ public class QuestInstance {
 
     Status status;
 
-    public static QuestInstance begin(ResourceLocation questID, UUID leader,boolean instantStart) {
-        return new QuestInstance(questID,leader,instantStart ? Status.IN_PROGRESS : Status.NOT_STARTED);
+    long startTime;
+
+    public static QuestInstance create(CampfireLevelData data,ResourceLocation questID, UUID leader, boolean instantStart) {
+        QuestInstance questInstance = new QuestInstance(questID, leader, instantStart ? Status.IN_PROGRESS : Status.PREP);
+        if (instantStart) {
+            questInstance.begin(data);
+        }
+        return questInstance;
     }
 
-    public QuestInstance(ResourceLocation questID, UUID leader,Status status) {
+    public void begin(CampfireLevelData data) {
+        members.forEach(member -> data.addAttempt(member,questID));
+        if (LoadedMods.gamestages.loaded) {
+            GameStagesCompat.onPlayersAcceptQuest(data.level.getServer(),quest(),members);
+        }
+        startTime = data.level.getGameTime();
+    }
+
+    QuestInstance(ResourceLocation questID, UUID leader,Status status) {
         this.questID = questID;
         this.leader = leader;
         this.status = status;
+        members.add(leader);
         progress = new ArrayList<>();
         failureProgress = new ArrayList<>();
         questLazy= Lazy.of(() -> TownCampfires.questLoader.getQuestMap().get(questID));
@@ -54,6 +71,7 @@ public class QuestInstance {
         buf.writeUUID(leader);
         buf.writeCollection(progress, FriendlyByteBuf::writeInt);
         buf.writeCollection(failureProgress, FriendlyByteBuf::writeInt);
+        buf.writeLong(startTime);
     }
 
     public static QuestInstance fromPacket(FriendlyByteBuf buf) {
@@ -66,6 +84,8 @@ public class QuestInstance {
         QuestInstance questInstance = new QuestInstance(questID,leader,active);
         questInstance.progress = integers;
         questInstance.failureProgress = failIntegers;
+
+        questInstance.startTime = buf.readLong();
         return questInstance;
     }
 
@@ -98,7 +118,7 @@ public class QuestInstance {
     }
 
     public boolean hasPlayer(ServerPlayer player) {
-        return isLeader(player) || members.contains(player.getUUID());
+        return members.contains(player.getUUID());
     }
 
     public boolean isLeader(ServerPlayer player) {
@@ -179,10 +199,15 @@ public class QuestInstance {
         };
     }
 
+    public boolean timeUp(long currentTime) {
+        if (quest().failureCriteria().timer() < 0 || !status().active) return false;
+        return currentTime - startTime >= quest().failureCriteria().timer();
+    }
+
     public <T extends AbstractCriterionTriggerInstance> boolean checkFailure(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
         Quest quest = quest();
         boolean update = false;
-        var criterias = quest.failureCriterias();
+        var criterias = quest.failureCriteria().custom();
         int criteriaCount = criterias.size();
         for (int i = 0 ; i <criteriaCount;i++) {
             Pair<QuestCriteria<?>, Integer> pair = criterias.get(i);
@@ -228,7 +253,7 @@ public class QuestInstance {
 
     public void updateStatus() {
 
-        List<Pair<QuestCriteria<?>, Integer>> failCriterias = quest().failureCriterias();
+        List<Pair<QuestCriteria<?>, Integer>> failCriterias = quest().failureCriteria().custom();
         for (int i = 0; i < failCriterias.size(); i++) {
             Pair<QuestCriteria<?>, Integer> criteria = failCriterias.get(i);
             int progress = progress().isEmpty() || progress().size() <= i ? 0 : progress().get(i);
@@ -260,9 +285,23 @@ public class QuestInstance {
         removeMember(claimingPlayer);
     }
 
+    public void punishMembers(CampfireLevelData data,MinecraftServer server) {
+        Set<UUID> toRemove = new HashSet<>();
+        for (UUID member : members) {
+            ServerPlayer player = server.getPlayerList().getPlayer(member);
+            if (player != null) {
+                quest().punishments().punish(player, null);
+                toRemove.add(member);
+            }else {
+                data.addDeferredPunishment(questID, member);
+            }
+        }
+        toRemove.forEach(members::remove);
+    }
+
 
     public enum Status {
-        NOT_STARTED(false),
+        PREP(false),
         IN_PROGRESS(true),
         FAILED(false),
         COMPLETE(false);

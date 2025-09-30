@@ -17,7 +17,7 @@
   "compact_desc": [
     "{\"color\":\"dark_gray\",\"text\":\"Don't kill any creepers\"}"
   ],
-  "compact_name": "{\"text\":\"Title\"}",
+  "compact_name": "{\"color\":\"gold\",\"text\":\"Don't kill Creepers\"}",
   "criteria": [
     {
       "count": 2,
@@ -32,26 +32,30 @@
     "{\"color\":\"dark_gray\",\"text\":\"Don't kill any creepers\"}"
   ],
   "difficulty": 1,
-  "failure_criteria": [
-    {
-      "count": 1,
-      "trigger": {
-        "conditions": {
-          "entity": [
-            {
-              "condition": "minecraft:entity_properties",
-              "entity": "this",
-              "predicate": {
-                "type": "minecraft:creeper"
+  "failure_criteria": {
+    "custom": [
+      {
+        "count": 1,
+        "trigger": {
+          "conditions": {
+            "entity": [
+              {
+                "condition": "minecraft:entity_properties",
+                "entity": "this",
+                "predicate": {
+                  "type": "minecraft:creeper"
+                }
               }
-            }
-          ]
-        },
-        "desc": "{\"color\":\"dark_gray\",\"text\":\"Avoid Creeper\"}",
-        "trigger": "minecraft:player_killed_entity"
+            ]
+          },
+          "desc": "{\"color\":\"dark_gray\",\"text\":\"Avoid Creeper\"}",
+          "trigger": "minecraft:player_killed_entity"
+        }
       }
-    }
-  ],
+    ],
+    "death": false,
+    "timer": -1
+  },
   "icon": {
     "Count": 1,
     "id": "minecraft:gold_ingot"

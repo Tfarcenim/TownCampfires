@@ -15,34 +15,47 @@
   },
   "attempts": 1,
   "compact_desc": [
-    "{\"color\":\"dark_gray\",\"text\":\"Example Quest 1 Description\"}"
+    "{\"color\":\"dark_gray\",\"text\":\"Kill zombie without dying\"}"
   ],
-  "compact_name": "{\"color\":\"gold\",\"text\":\"Example Quest 1\"}",
+  "compact_name": "{\"color\":\"gold\",\"text\":\"Don't die\"}",
   "criteria": [
     {
       "count": 2,
       "trigger": {
-        "conditions": {},
-        "desc": "{\"color\":\"dark_gray\",\"text\":\"Kill Mobs\"}",
+        "conditions": {
+          "entity": [
+            {
+              "condition": "minecraft:entity_properties",
+              "entity": "this",
+              "predicate": {
+                "type": "minecraft:creeper"
+              }
+            }
+          ]
+        },
+        "desc": "{\"color\":\"dark_gray\",\"text\":\"Kill Zombie\"}",
         "trigger": "minecraft:player_killed_entity"
       }
     }
   ],
   "desc": [
-    "{\"color\":\"dark_gray\",\"text\":\"Example Quest 1 Description\"}"
+    "{\"color\":\"dark_gray\",\"text\":\"Kill zombie without dying\"}"
   ],
   "difficulty": 1,
   "failure_criteria": {
-    "death": false,
-    "timer": -1
+    "death": true,
+    "timer": 1000
   },
   "icon": {
     "Count": 1,
     "id": "minecraft:gold_ingot"
   },
   "level_up": false,
-  "multiplayer_type": "solo",
-  "name": "{\"color\":\"gold\",\"text\":\"Example Quest 1\"}",
+  "multiplayer_type": "prep_solo",
+  "name": "{\"color\":\"gold\",\"text\":\"Don't die\"}",
+  "punishments": {
+    "player_experience": -1000
+  },
   "rewards": {
     "campfire_experience": 100,
     "player_experience": 100

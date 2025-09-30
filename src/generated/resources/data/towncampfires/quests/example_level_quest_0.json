@@ -32,7 +32,30 @@
     "{\"color\":\"dark_gray\",\"text\":\"Example Level Quest 0 Desc\"}"
   ],
   "difficulty": 1,
-  "failure_criteria": [],
+  "failure_criteria": {
+    "custom": [
+      {
+        "count": 1,
+        "trigger": {
+          "conditions": {
+            "entity": [
+              {
+                "condition": "minecraft:entity_properties",
+                "entity": "this",
+                "predicate": {
+                  "type": "minecraft:creeper"
+                }
+              }
+            ]
+          },
+          "desc": "{\"color\":\"dark_gray\",\"text\":\"Avoid Creeper\"}",
+          "trigger": "minecraft:player_killed_entity"
+        }
+      }
+    ],
+    "death": false,
+    "timer": -1
+  },
   "icon": {
     "Count": 1,
     "id": "minecraft:gold_ingot"

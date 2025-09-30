@@ -22,12 +22,24 @@ public class ModCommands {
                 .then(Commands.literal("info")
                         .executes(ModCommands::printInfo)
                 )
-                .then(Commands.literal("refresh")
+                .then(Commands.literal("refresh").requires(sourceStack -> sourceStack.hasPermission(Commands.LEVEL_GAMEMASTERS))
                         .then(Commands.argument("pos", BlockPosArgument.blockPos())
                                 .executes(ModCommands::manualRefresh)
                         )
                 )
+                .then(Commands.literal("reset").requires(sourceStack -> sourceStack.hasPermission(Commands.LEVEL_ADMINS))
+                                .executes(ModCommands::reset)
+                        )
         );
+    }
+
+    private static int reset(CommandContext<CommandSourceStack> context) {
+        CommandSourceStack source = context.getSource();
+        ServerLevel level = source.getLevel();
+        MinecraftServer server = source.getServer();
+        CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(server.overworld());
+        campfireLevelData.reset();
+        return 1;
     }
 
     private static int manualRefresh(CommandContext<CommandSourceStack> context) throws CommandSyntaxException {
@@ -37,19 +49,18 @@ public class ModCommands {
         BlockPos blockPos = BlockPosArgument.getLoadedBlockPos(context,"pos");
         CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(server.overworld());
         BlockEntity be = level.getBlockEntity(blockPos);
-
+        campfireLevelData.refresh();
+        return 1;
+        /*
         if (be instanceof TownCampfireBlockEntity tcbe) {
             TownCampfire townCampfire = tcbe.townCampfire;
-
-            campfireLevelData.completedQuests.clear();
             townCampfire.refresh(level);
-            campfireLevelData.setDirty();
             source.sendSuccess(Component.literal("Refreshed campfire"),true);
             return 1;
         } else {
             source.sendFailure(Component.literal("No campfire located"));
             return 0;
-        }
+        }*/
 
     }
 

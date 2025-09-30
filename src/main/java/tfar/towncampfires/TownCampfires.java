@@ -25,6 +25,7 @@ import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
@@ -99,6 +100,16 @@ public class TownCampfires
         MinecraftForge.EVENT_BUS.addListener(this::serverStop);
         MinecraftForge.EVENT_BUS.addListener(this::sync);
         MinecraftForge.EVENT_BUS.addListener(this::playerLogin);
+        MinecraftForge.EVENT_BUS.addListener(this::onDeath);
+    }
+
+    void onDeath(LivingDeathEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(player.server.overworld());
+            if (campfireLevelData != null) {
+                campfireLevelData.checkDeathCriteria(player);
+            }
+        }
     }
 
     void playerLogin(PlayerEvent.PlayerLoggedInEvent event) {
