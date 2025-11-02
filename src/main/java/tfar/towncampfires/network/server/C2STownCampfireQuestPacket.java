@@ -32,7 +32,7 @@ public class C2STownCampfireQuestPacket implements C2SModPacket {
         TownCampfire townCampfire = campfireLevelData.byLocation(pos);
         if (townCampfire != null) {
             switch (type) {
-                case START -> campfireLevelData.startQuest(player, questID, townCampfire);
+                case START -> campfireLevelData.startOrPrepQuest(player, questID, townCampfire);
                 case FINISH -> campfireLevelData.finishQuest(player,questID,townCampfire);
             }
 

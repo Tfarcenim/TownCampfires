@@ -78,82 +78,60 @@ public class QuestRewards {
     }
 
     public void grant(ServerPlayer pPlayer, TownCampfire campfire, boolean isLevelup) {
-        pPlayer.giveExperiencePoints(this.playerExperience);
         campfire.giveExperiencePoints(campfireExperience, isLevelup);
-        LootContext lootcontext = (new LootContext.Builder(pPlayer.getLevel())).withParameter(LootContextParams.THIS_ENTITY, pPlayer)
-                .withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom()).withLuck(pPlayer.getLuck())
-                .create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
-        boolean flag = false;
-
-        for (ResourceLocation resourcelocation : this.loot) {
-            for (ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
-                if (pPlayer.addItem(itemstack)) {
-                    pPlayer.level.playSound(null, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), SoundEvents.ITEM_PICKUP,
-                            SoundSource.PLAYERS, 0.2F, ((pPlayer.getRandom().nextFloat() - pPlayer.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
-                    flag = true;
-                } else {
-                    ItemEntity itementity = pPlayer.drop(itemstack, false);
-                    if (itementity != null) {
-                        itementity.setNoPickUpDelay();
-                        itementity.setOwner(pPlayer.getUUID());
-                    }
-                }
-            }
-        }
-
-        if (flag) {
-            pPlayer.containerMenu.broadcastChanges();
-        }
-
-        if (this.recipes.length > 0) {
-            pPlayer.awardRecipesByKey(this.recipes);
-        }
-
-        MinecraftServer server = pPlayer.server;
-        this.function.get(server.getFunctions()).ifPresent(function -> {
-            server.getFunctions().execute(function, pPlayer.createCommandSourceStack().withSuppressedOutput().withPermission(2));
-        });
+        handleCommon(pPlayer);
     }
 
-    public void punish(ServerPlayer pPlayer, TownCampfire campfire) {
-        pPlayer.giveExperiencePoints(this.playerExperience);
+    void handleCommon(ServerPlayer player) {
+        player.giveExperiencePoints(this.playerExperience);
         //campfire.giveExperiencePoints(campfireExperience,false);
-        LootContext lootcontext = new LootContext.Builder(pPlayer.getLevel()).withParameter(LootContextParams.THIS_ENTITY, pPlayer)
-                .withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom())
-                .withLuck(pPlayer.getLuck()).create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
+        LootContext lootcontext = new LootContext.Builder(player.getLevel()).withParameter(LootContextParams.THIS_ENTITY, player)
+                .withParameter(LootContextParams.ORIGIN, player.position()).withRandom(player.getRandom())
+                .withLuck(player.getLuck()).create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
         boolean addedItems = false;
 
         for (ResourceLocation resourcelocation : this.loot) {
-            for (ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
-                if (pPlayer.addItem(itemstack)) {
-                    pPlayer.level.playSound(null, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.2F, ((pPlayer.getRandom().nextFloat() - pPlayer.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
+            for (ItemStack itemstack : player.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
+                if (player.addItem(itemstack)) {
+                    player.level.playSound(null, player.getX(), player.getY(), player.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.2F, ((player.getRandom().nextFloat() - player.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
                     addedItems = true;
                 } else {
-                    ItemEntity itementity = pPlayer.drop(itemstack, false);
+                    ItemEntity itementity = player.drop(itemstack, false);
                     if (itementity != null) {
                         itementity.setNoPickUpDelay();
-                        itementity.setOwner(pPlayer.getUUID());
+                        itementity.setOwner(player.getUUID());
                     }
                 }
             }
         }
 
         if (addedItems) {
-            pPlayer.containerMenu.broadcastChanges();
+            player.containerMenu.broadcastChanges();
         }
 
         if (this.recipes.length > 0) {
-            pPlayer.awardRecipesByKey(this.recipes);
+            player.awardRecipesByKey(this.recipes);
         }
 
-        MinecraftServer minecraftserver = pPlayer.server;
+        MinecraftServer minecraftserver = player.server;
         this.function.get(minecraftserver.getFunctions()).ifPresent((p_9996_) -> {
-            minecraftserver.getFunctions().execute(p_9996_, pPlayer.createCommandSourceStack().withSuppressedOutput().withPermission(2));
+            minecraftserver.getFunctions().execute(p_9996_, player.createCommandSourceStack().withSuppressedOutput().withPermission(2));
         });
 
         if (LoadedMods.gamestages.loaded) {
-            GameStagesCompat.onPlayersCompleteQuest(pPlayer, this);
+            GameStagesCompat.onPlayersCompleteQuest(player, this);
         }
+        for (MobEffectInstance mobEffectInstance : applyBuffs) {
+            player.addEffect(mobEffectInstance);
+        }
+        for (MobEffect effect : removeBuffs) {
+            player.removeEffect(effect);
+        }
+    }
+
+    public void punish(ServerPlayer pPlayer, TownCampfire campfire) {
+        handleCommon(pPlayer);
+        //campfire.giveExperiencePoints(campfireExperience,false);
     }
 
 

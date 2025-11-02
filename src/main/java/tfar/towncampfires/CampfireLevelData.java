@@ -134,7 +134,7 @@ public class CampfireLevelData extends SavedData {
             if (questInstance.status().active && questInstance.hasPlayer(player)) {
                 if (questInstance.isEffectForbidden(effect)) {
                     questInstance.setStatus(QuestInstance.Status.FAILED);
-                    questInstance.punishMembers(this ,level.getServer());
+                    questInstance.punishMembers(this, level.getServer());
                     toUpdate.add(questInstance);
                 }
             }
@@ -161,7 +161,7 @@ public class CampfireLevelData extends SavedData {
             if (questInstance.status().active && questInstance.hasPlayer(player)) {
                 if (questInstance.isStageForbidden(stage)) {
                     questInstance.setStatus(QuestInstance.Status.FAILED);
-                    questInstance.punishMembers(this ,level.getServer());
+                    questInstance.punishMembers(this, level.getServer());
                     toUpdate.add(questInstance);
                 }
             }
@@ -188,7 +188,7 @@ public class CampfireLevelData extends SavedData {
             if (questInstance.status().active) {
                 if (questInstance.timeUp(level.getGameTime())) {
                     questInstance.setStatus(QuestInstance.Status.FAILED);
-                    questInstance.punishMembers(this ,level.getServer());
+                    questInstance.punishMembers(this, level.getServer());
                     toUpdate.add(questInstance);
                 }
             }
@@ -273,57 +273,56 @@ public class CampfireLevelData extends SavedData {
     }
 
 
-    public void startQuest(ServerPlayer player, ResourceLocation questID, TownCampfire campfire) {
+    public void startOrPrepQuest(ServerPlayer player, ResourceLocation questID, TownCampfire campfire) {
 
         if (!campfire.getQuestIds().contains(questID)) {
             TownCampfires.LOGGER.warn("{} Attempted to start nonexistent quest {}", player, questID);
         } else {
             Quest quest = TownCampfires.questLoader.getQuestMap().get(questID);
-            if (!hasEnoughSlots(player, quest)) {
-                TownCampfires.LOGGER.warn("{} Attempted to start quest {} without enough slots", player, questID);
-            } else {
-                QuestInstance existing = findExistingQuest(quest, player);
-                if (existing == null) {//make a new quest instance
-                    switch (quest.type()) {
-                        case solo -> {
-                            QuestInstance questInstance = QuestInstance.create(this, questID, player.getUUID(), true);
+            QuestInstance existing = findExistingQuest(quest, player);
+            if (existing == null) {//make a new quest instance
+                if (!hasEnoughSlots(player, quest)) {
+                    TownCampfires.LOGGER.warn("{} Attempted to start quest {} without enough slots", player, questID);
+                }
+                switch (quest.type()) {
+                    case solo -> {
+                        QuestInstance questInstance = QuestInstance.create(this, questID, player.getUUID(), true);
+                        currentQuests.add(questInstance);
+                        updatePlayers = true;
+                        setDirty();
+                    }
+                    case prep_solo, prep_mp -> {
+                        //check for other existing instances first!
+                        boolean wasAdded = false;
+                        for (QuestInstance questInstance : this.currentQuests) {
+                            Quest quest1 = questInstance.quest();
+                            if (quest1 == quest && !questInstance.hasPlayer(player)) {
+                                questInstance.addPlayer(player);
+                                wasAdded = true;
+                                updatePlayers = true;
+                                setDirty();
+                                break;
+                            }
+                        }
+
+                        if (!wasAdded) {
+                            QuestInstance questInstance = QuestInstance.create(this, questID, player.getUUID(), false);
                             currentQuests.add(questInstance);
                             updatePlayers = true;
                             setDirty();
                         }
-                        case prep_solo, prep_mp -> {
-                            //check for other existing instances first!
-                            boolean wasAdded = false;
-                            for (QuestInstance questInstance : this.currentQuests) {
-                                Quest quest1 = questInstance.quest();
-                                if (quest1 == quest && !questInstance.hasPlayer(player)) {
-                                    questInstance.addPlayer(player);
-                                    wasAdded = true;
-                                    updatePlayers = true;
-                                    setDirty();
-                                    break;
-                                }
-                            }
-
-                            if (!wasAdded) {
-                                QuestInstance questInstance = QuestInstance.create(this, questID, player.getUUID(), false);
-                                currentQuests.add(questInstance);
-                                updatePlayers = true;
-                                setDirty();
-                            }
-                        }
                     }
-                } else {
-                    switch (quest.type()) {
-                        case solo -> {
+                }
+            } else {
+                switch (quest.type()) {
+                    case solo -> {
 
-                        }
-                        case prep_solo, prep_mp -> {
-                            existing.setStatus(QuestInstance.Status.IN_PROGRESS);
-                            existing.begin(this);
-                            updatePlayers = true;
-                            setDirty();
-                        }
+                    }
+                    case prep_solo, prep_mp -> {
+                        existing.setStatus(QuestInstance.Status.IN_PROGRESS);
+                        existing.begin(this);
+                        updatePlayers = true;
+                        setDirty();
                     }
                 }
             }
