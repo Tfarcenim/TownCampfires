@@ -54,6 +54,16 @@
   "multiplayer_type": "prep_solo",
   "name": "{\"color\":\"gold\",\"text\":\"Don't die\"}",
   "punishments": {
+    "add_effects": [
+      {
+        "Ambient": false,
+        "Amplifier": 0,
+        "Duration": 600,
+        "ShowIcon": true,
+        "ShowParticles": true,
+        "forge:id": "minecraft:poison"
+      }
+    ],
     "player_experience": -1000
   },
   "rewards": {

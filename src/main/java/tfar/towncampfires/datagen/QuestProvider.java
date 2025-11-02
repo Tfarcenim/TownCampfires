@@ -13,6 +13,8 @@ import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EntityType;
 import org.slf4j.Logger;
 import tfar.towncampfires.TownCampfires;
@@ -24,6 +26,7 @@ import tfar.towncampfires.data.quest.criteria.FailureCriteria;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
 
@@ -68,10 +71,10 @@ public class QuestProvider implements DataProvider {
                 .addStages("Quest 1")
                 .rewards(
                         new QuestRewards(100,100,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
-                                new String[]{"Completed Quest 1"},new String[]{"Quest 1"}))
+                                new String[]{"Completed Quest 1"},new String[]{"Quest 1"}, List.of(new MobEffectInstance(MobEffects.REGENERATION,600)),List.of()))
                 .punishment(
                         new QuestRewards(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
-                                new String[]{"Failed Quest 1"},new String[]{"Quest 1"}))
+                                new String[]{"Failed Quest 1"},new String[]{"Quest 1"}, List.of(new MobEffectInstance(MobEffects.POISON,600)),List.of()))
                 .save(consumer, TownCampfires.id("example_quest_0"));
 
         FinishedQuest.builder().name(Component.literal("Example Quest 1").withStyle(ChatFormatting.GOLD),null)
@@ -82,8 +85,8 @@ public class QuestProvider implements DataProvider {
 
         FinishedQuest.builder().name(Component.literal("Don't kill Creepers").withStyle(ChatFormatting.GOLD),null)
                 .desc(Component.literal("Don't kill any creepers").withStyle(ChatFormatting.DARK_GRAY))
-                .slots(20)
-                .attempts(0)
+                .slots(10)
+                .attempts(1)
                 .type(Quest.MultiplayerType.prep_solo)
                 .addCriteria(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY,
                         KilledTrigger.TriggerInstance.playerKilledEntity(), Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count)
@@ -92,7 +95,7 @@ public class QuestProvider implements DataProvider {
                         Component.literal("Avoid Creeper").withStyle(ChatFormatting.DARK_GRAY)))
                 .punishment(
                         new QuestRewards(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
-                                new String[0],new String[0]))
+                                new String[0],new String[0], List.of(new MobEffectInstance(MobEffects.POISON,600)),List.of()))
                 .save(consumer, TownCampfires.id("dont_kill_creepers"));
 
         FinishedQuest.builder().name(Component.literal("Don't die").withStyle(ChatFormatting.GOLD),null)
@@ -106,7 +109,7 @@ public class QuestProvider implements DataProvider {
                 .setFailureCriteria(new FailureCriteria(new ArrayList<>(),true,1000,new ArrayList<>(),new ArrayList<>()))
                 .punishment(
                         new QuestRewards(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
-                                new String[0],new String[0]))
+                                new String[0],new String[0], List.of(new MobEffectInstance(MobEffects.POISON,600)),List.of()))
                 .save(consumer, TownCampfires.id("kill_zombie"));
 
         /*FinishedQuest.builder().title(Component.literal("Stay near Campfire").withStyle(ChatFormatting.GOLD))

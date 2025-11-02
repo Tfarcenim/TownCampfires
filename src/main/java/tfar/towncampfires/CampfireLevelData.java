@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.config.TownCampfireConfig;
@@ -104,7 +105,7 @@ public class CampfireLevelData extends SavedData {
     public void checkDeathCriteria(ServerPlayer player) {
         List<QuestInstance> toUpdate = new ArrayList<>();
         for (QuestInstance questInstance : currentQuests) {
-            if (questInstance.status().active) {
+            if (questInstance.status().active && questInstance.hasPlayer(player)) {
                 FailureCriteria failureCriteria = questInstance.quest().failureCriteria();
                 if (failureCriteria.death()) {
                     questInstance.setStatus(QuestInstance.Status.FAILED);
@@ -124,6 +125,60 @@ public class CampfireLevelData extends SavedData {
 
         for (ServerPlayer play : player.server.getPlayerList().getPlayers()) {
             sendDataTo(play);
+        }
+    }
+
+    public void checkEffectAddedCriteria(ServerPlayer player, MobEffect effect) {
+        List<QuestInstance> toUpdate = new ArrayList<>();
+        for (QuestInstance questInstance : currentQuests) {
+            if (questInstance.status().active && questInstance.hasPlayer(player)) {
+                if (questInstance.isEffectForbidden(effect)) {
+                    questInstance.setStatus(QuestInstance.Status.FAILED);
+                    questInstance.punishMembers(this ,level.getServer());
+                    toUpdate.add(questInstance);
+                }
+            }
+        }
+
+        for (QuestInstance questInstance : toUpdate) {
+            List<UUID> members = questInstance.getMembers();
+            for (UUID uuid : members) {
+                markQuestCompleted(uuid, questInstance.questID());
+            }
+            if (questInstance.getMembers().isEmpty()) {
+                currentQuests.remove(questInstance);
+            }
+        }
+        if (!toUpdate.isEmpty()) {
+            updatePlayers = true;
+            setDirty();
+        }
+    }
+
+    public void checkStageAddedCriteria(ServerPlayer player, String stage) {
+        List<QuestInstance> toUpdate = new ArrayList<>();
+        for (QuestInstance questInstance : currentQuests) {
+            if (questInstance.status().active && questInstance.hasPlayer(player)) {
+                if (questInstance.isStageForbidden(stage)) {
+                    questInstance.setStatus(QuestInstance.Status.FAILED);
+                    questInstance.punishMembers(this ,level.getServer());
+                    toUpdate.add(questInstance);
+                }
+            }
+        }
+
+        for (QuestInstance questInstance : toUpdate) {
+            List<UUID> members = questInstance.getMembers();
+            for (UUID uuid : members) {
+                markQuestCompleted(uuid, questInstance.questID());
+            }
+            if (questInstance.getMembers().isEmpty()) {
+                currentQuests.remove(questInstance);
+            }
+        }
+        if (!toUpdate.isEmpty()) {
+            updatePlayers = true;
+            setDirty();
         }
     }
 
@@ -332,6 +387,12 @@ public class CampfireLevelData extends SavedData {
     public static CampfireLevelData getOrCreate(ServerLevel level) {
         return level.getDataStorage()
                 .computeIfAbsent(compoundTag -> loadStatic(compoundTag, level), () -> new CampfireLevelData(level), TownCampfires.MODID);
+    }
+
+    @Nullable
+    public static CampfireLevelData get(ServerLevel level) {
+        return level.getDataStorage()
+                .get(compoundTag -> loadStatic(compoundTag, level), TownCampfires.MODID);
     }
 
     static CampfireLevelData loadStatic(CompoundTag compoundTag, ServerLevel level) {

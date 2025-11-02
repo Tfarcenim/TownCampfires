@@ -49,7 +49,7 @@ public class FinishedQuest {
         FailureCriteria failureCriteria = FailureCriteria.EMPTY;
 
         QuestRewards rewards = new QuestRewards(100,100, new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
-                new String[0],new String[0]);
+                new String[0],new String[0],List.of(),List.of());
 
         QuestRewards punishments = QuestRewards.EMPTY;
         boolean levelUp;

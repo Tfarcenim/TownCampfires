@@ -9,22 +9,28 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.GsonHelper;
+import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
+import net.minecraftforge.registries.ForgeRegistries;
+import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.compat.GameStagesCompat;
 import tfar.towncampfires.compat.LoadedMods;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 
 public class QuestRewards {
 
 
-    public static final QuestRewards EMPTY = new QuestRewards(0,0, new ResourceLocation[0], new ResourceLocation[0],
-            CommandFunction.CacheableFunction.NONE,new String[0],new String[0]);
+    public static final QuestRewards EMPTY = new QuestRewards(0, 0, new ResourceLocation[0], new ResourceLocation[0],
+            CommandFunction.CacheableFunction.NONE, new String[0], new String[0], List.of(), List.of());
     private final int playerExperience;
     private final int campfireExperience;
     private final ResourceLocation[] loot;
@@ -32,9 +38,12 @@ public class QuestRewards {
     private final CommandFunction.CacheableFunction function;
     private final String[] addGameStages;
     private final String[] removeGameStages;
+    private final List<MobEffectInstance> applyBuffs;
+    private final List<MobEffect> removeBuffs;
 
-    public QuestRewards(int playerExperience,int campfireExperience, ResourceLocation[] pLoot, ResourceLocation[] pRecipes,
-                        CommandFunction.CacheableFunction pFunction,String[] addGameStages,String[] removeGameStages) {
+    public QuestRewards(int playerExperience, int campfireExperience, ResourceLocation[] pLoot, ResourceLocation[] pRecipes,
+                        CommandFunction.CacheableFunction pFunction, String[] addGameStages, String[] removeGameStages, List<MobEffectInstance> applyBuffs,
+                        List<MobEffect> removeBuffs) {
         this.playerExperience = playerExperience;
         this.campfireExperience = campfireExperience;
         this.loot = pLoot;
@@ -42,7 +51,19 @@ public class QuestRewards {
         this.function = pFunction;
         this.addGameStages = addGameStages;
         this.removeGameStages = removeGameStages;
+        this.applyBuffs = applyBuffs;
+        this.removeBuffs = removeBuffs;
     }
+
+
+    //Completed Added Items:items added upon completing the quest.
+    // Failed Added Items: items added upon failing the quest.
+    // Completed Removed Items: items removed upon completing the quest.
+    // Failed Removed Items: items removed upon failing the quest.
+    // Completed Applied Buffs: applied buffs/debuffs upon completing the quest.
+    // Failed Applied Buffs: applies buffs/debuffs upon failing the quest.
+    // Completed Remove Buffs: buffs/debuffs removed upon completing the quest.
+    // Failed Remove Buffs: buffs/debuffs removed upon failing the quest.
 
     public int playerExperience() {
         return playerExperience;
@@ -56,16 +77,16 @@ public class QuestRewards {
         return this.recipes;
     }
 
-    public void grant(ServerPlayer pPlayer, TownCampfire campfire,boolean isLevelup) {
+    public void grant(ServerPlayer pPlayer, TownCampfire campfire, boolean isLevelup) {
         pPlayer.giveExperiencePoints(this.playerExperience);
-        campfire.giveExperiencePoints(campfireExperience,isLevelup);
+        campfire.giveExperiencePoints(campfireExperience, isLevelup);
         LootContext lootcontext = (new LootContext.Builder(pPlayer.getLevel())).withParameter(LootContextParams.THIS_ENTITY, pPlayer)
                 .withParameter(LootContextParams.ORIGIN, pPlayer.position()).withRandom(pPlayer.getRandom()).withLuck(pPlayer.getLuck())
                 .create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
         boolean flag = false;
 
-        for(ResourceLocation resourcelocation : this.loot) {
-            for(ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
+        for (ResourceLocation resourcelocation : this.loot) {
+            for (ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
                 if (pPlayer.addItem(itemstack)) {
                     pPlayer.level.playSound(null, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), SoundEvents.ITEM_PICKUP,
                             SoundSource.PLAYERS, 0.2F, ((pPlayer.getRandom().nextFloat() - pPlayer.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
@@ -102,8 +123,8 @@ public class QuestRewards {
                 .withLuck(pPlayer.getLuck()).create(LootContextParamSets.ADVANCEMENT_REWARD); // FORGE: luck to LootContext
         boolean addedItems = false;
 
-        for(ResourceLocation resourcelocation : this.loot) {
-            for(ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
+        for (ResourceLocation resourcelocation : this.loot) {
+            for (ItemStack itemstack : pPlayer.server.getLootTables().get(resourcelocation).getRandomItems(lootcontext)) {
                 if (pPlayer.addItem(itemstack)) {
                     pPlayer.level.playSound(null, pPlayer.getX(), pPlayer.getY(), pPlayer.getZ(), SoundEvents.ITEM_PICKUP, SoundSource.PLAYERS, 0.2F, ((pPlayer.getRandom().nextFloat() - pPlayer.getRandom().nextFloat()) * 0.7F + 1.0F) * 2.0F);
                     addedItems = true;
@@ -131,7 +152,7 @@ public class QuestRewards {
         });
 
         if (LoadedMods.gamestages.loaded) {
-            GameStagesCompat.onPlayersCompleteQuest(pPlayer,this);
+            GameStagesCompat.onPlayersCompleteQuest(pPlayer, this);
         }
     }
 
@@ -144,9 +165,17 @@ public class QuestRewards {
         return removeGameStages;
     }
 
+    @Override
     public String toString() {
-        return "QuestRewards{experience=" + this.playerExperience + ", loot=" + Arrays.toString(this.loot) +
-                ", recipes=" + Arrays.toString(this.recipes) + ", function=" + this.function + "}";
+        return "QuestRewards{" +
+                "playerExperience=" + playerExperience +
+                ", campfireExperience=" + campfireExperience +
+                ", loot=" + Arrays.toString(loot) +
+                ", recipes=" + Arrays.toString(recipes) +
+                ", function=" + function +
+                ", addGameStages=" + Arrays.toString(addGameStages) +
+                ", removeGameStages=" + Arrays.toString(removeGameStages) +
+                '}';
     }
 
     public void writeToPacket(FriendlyByteBuf buf) {
@@ -155,7 +184,8 @@ public class QuestRewards {
     }
 
     public static QuestRewards readFromPacket(FriendlyByteBuf buf) {
-        return new QuestRewards(buf.readInt(),buf.readInt(),new ResourceLocation[0],new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,new String[0],new String[0]);
+        return new QuestRewards(buf.readInt(), buf.readInt(), new ResourceLocation[0], new ResourceLocation[0],
+                CommandFunction.CacheableFunction.NONE, new String[0], new String[0], List.of(), List.of());
     }
 
     public JsonElement serializeToJson() {
@@ -174,7 +204,7 @@ public class QuestRewards {
             if (this.loot.length > 0) {
                 JsonArray jsonarray = new JsonArray();
 
-                for(ResourceLocation resourcelocation : this.loot) {
+                for (ResourceLocation resourcelocation : this.loot) {
                     jsonarray.add(resourcelocation.toString());
                 }
 
@@ -184,7 +214,7 @@ public class QuestRewards {
             if (this.recipes.length > 0) {
                 JsonArray jsonarray1 = new JsonArray();
 
-                for(ResourceLocation resourcelocation1 : this.recipes) {
+                for (ResourceLocation resourcelocation1 : this.recipes) {
                     jsonarray1.add(resourcelocation1.toString());
                 }
 
@@ -197,7 +227,7 @@ public class QuestRewards {
 
             if (addGameStages.length > 0) {
                 JsonArray jsonArray = new JsonArray();
-                for(String s : this.addGameStages) {
+                for (String s : this.addGameStages) {
                     jsonArray.add(s);
                 }
                 jsonobject.add(ADD_STAGES, jsonArray);
@@ -205,10 +235,39 @@ public class QuestRewards {
 
             if (removeGameStages.length > 0) {
                 JsonArray jsonArray = new JsonArray();
-                for(String s : this.removeGameStages) {
+                for (String s : this.removeGameStages) {
                     jsonArray.add(s);
                 }
                 jsonobject.add(REMOVE_STAGES, jsonArray);
+            }
+
+
+            if (!applyBuffs.isEmpty()) {
+                JsonArray jsonArray = new JsonArray();
+                for (MobEffectInstance effectInstance : applyBuffs) {
+                    JsonObject jsonObject = new JsonObject();
+                    jsonObject.addProperty("forge:id",ForgeRegistries.MOB_EFFECTS.getKey(effectInstance.getEffect()).toString());
+                    jsonObject.addProperty("Duration",effectInstance.getDuration());
+                    jsonObject.addProperty("Amplifier",effectInstance.getAmplifier());
+
+                    jsonObject.addProperty("Ambient",effectInstance.isAmbient());
+                    jsonObject.addProperty("ShowParticles",effectInstance.isVisible());
+                    jsonObject.addProperty("ShowIcon",effectInstance.showIcon());
+
+                    jsonArray.add(jsonObject);
+                }
+                jsonobject.add(ADD_EFFECTS,jsonArray);
+            }
+
+            if (!removeBuffs.isEmpty()) {
+                JsonArray jsonArray = new JsonArray();
+                for (MobEffect effectInstance : removeBuffs) {
+                    JsonObject jsonObject = new JsonObject();
+                    jsonObject.addProperty("forge:id",ForgeRegistries.MOB_EFFECTS.getKey(effectInstance).toString());
+
+                    jsonArray.add(jsonObject);
+                }
+                jsonobject.add(REMOVE_EFFECTS,jsonArray);
             }
 
             return jsonobject;
@@ -218,21 +277,24 @@ public class QuestRewards {
     static String ADD_STAGES = "add_gamestages";
     static String REMOVE_STAGES = "remove_gamestages";
 
+    static String ADD_EFFECTS = "add_effects";
+    static String REMOVE_EFFECTS = "remove_effects";
+
     public static QuestRewards deserialize(JsonObject pJson) throws JsonParseException {
-        if(pJson == null) return EMPTY;
+        if (pJson == null) return EMPTY;
         int experience = GsonHelper.getAsInt(pJson, "player_experience", 0);
         int campfireExperience = GsonHelper.getAsInt(pJson, "campfire_experience", 0);
         JsonArray jsonarray = GsonHelper.getAsJsonArray(pJson, "loot", new JsonArray());
         ResourceLocation[] aresourcelocation = new ResourceLocation[jsonarray.size()];
 
-        for(int j = 0; j < aresourcelocation.length; ++j) {
+        for (int j = 0; j < aresourcelocation.length; ++j) {
             aresourcelocation[j] = new ResourceLocation(GsonHelper.convertToString(jsonarray.get(j), "loot[" + j + "]"));
         }
 
         JsonArray jsonarray1 = GsonHelper.getAsJsonArray(pJson, "recipes", new JsonArray());
         ResourceLocation[] aresourcelocation1 = new ResourceLocation[jsonarray1.size()];
 
-        for(int k = 0; k < aresourcelocation1.length; ++k) {
+        for (int k = 0; k < aresourcelocation1.length; ++k) {
             aresourcelocation1[k] = new ResourceLocation(GsonHelper.convertToString(jsonarray1.get(k), "recipes[" + k + "]"));
         }
 
@@ -249,12 +311,82 @@ public class QuestRewards {
         JsonArray jsonarrayRemove = GsonHelper.getAsJsonArray(pJson, REMOVE_STAGES, new JsonArray());
         String[] removeStages = toArray(jsonarrayRemove);
 
-        return new QuestRewards(experience,campfireExperience, aresourcelocation, aresourcelocation1, commandfunction$cacheablefunction,addStages,removeStages);
+        JsonArray jsonArrayAddEffects = GsonHelper.getAsJsonArray(pJson, ADD_EFFECTS, new JsonArray());
+        List<MobEffectInstance> addEffects = getAddEffects(jsonArrayAddEffects);
+
+        JsonArray jsonArrayRemoveEffects = GsonHelper.getAsJsonArray(pJson, REMOVE_EFFECTS, new JsonArray());
+        List<MobEffect> removeEffects = getRemoveEffects(jsonArrayRemoveEffects);
+
+        return new QuestRewards(experience, campfireExperience, aresourcelocation, aresourcelocation1, commandfunction$cacheablefunction, addStages, removeStages, addEffects, removeEffects);
+    }
+
+    //   public static MobEffectInstance load(CompoundTag pNbt) {
+    //      int i = pNbt.getByte("Id") & 0xFF;
+    //      MobEffect mobeffect = MobEffect.byId(i);
+    //      mobeffect = net.minecraftforge.common.ForgeHooks.loadMobEffect(pNbt, "forge:id", mobeffect);
+    //      return mobeffect == null ? null : loadSpecifiedEffect(mobeffect, pNbt);
+    //   }
+
+    //      int i = pNbt.getByte("Amplifier");
+    //      int j = pNbt.getInt("Duration");
+    //      boolean flag = pNbt.getBoolean("Ambient");
+    //      boolean flag1 = true;
+    //      if (pNbt.contains("ShowParticles", 1)) {
+    //         flag1 = pNbt.getBoolean("ShowParticles");
+    //      }
+    //
+    //      boolean flag2 = flag1;
+    //      if (pNbt.contains("ShowIcon", 1)) {
+    //         flag2 = pNbt.getBoolean("ShowIcon");
+    //      }
+
+    public static List<MobEffectInstance> getAddEffects(JsonArray array) {
+        List<MobEffectInstance> list = new ArrayList<>();
+        for (JsonElement element : array) {
+            JsonObject object = element.getAsJsonObject();
+            MobEffect mobeffect = getMobEffect(object);
+            if (mobeffect != null) {
+                int amplifier = GsonHelper.getAsInt(object,"Amplifier",0);
+                int duration = GsonHelper.getAsInt(object,"Duration",600);
+                boolean ambient = GsonHelper.getAsBoolean(object,"Ambient",false);
+
+                boolean showParticles = GsonHelper.getAsBoolean(object,"ShowParticles",true);
+
+                boolean showIcon = GsonHelper.getAsBoolean(object,"ShowIcon",true);
+
+
+                list.add(new MobEffectInstance(mobeffect,duration,amplifier,ambient,showParticles,showIcon));
+                //support hidden effects?
+            }
+        }
+        return list;
+    }
+
+    @Nullable
+    public static MobEffect getMobEffect(JsonObject object) {
+        int id = GsonHelper.getAsInt(object,"Id",0);
+        MobEffect mobeffect = MobEffect.byId(id);
+
+        if (object.has("forge:id")) {
+            mobeffect = ForgeRegistries.MOB_EFFECTS.getValue(new ResourceLocation(object.get("forge:id").getAsString()));
+        }
+        return mobeffect;
+    }
+
+    public static List<MobEffect> getRemoveEffects(JsonArray array) {
+        List<MobEffect> list = new ArrayList<>();
+        for (JsonElement element : array) {
+            MobEffect mobeffect = getMobEffect(element.getAsJsonObject());
+            if (mobeffect != null) {
+                list.add(mobeffect);
+            }
+        }
+        return list;
     }
 
     public static String[] toArray(JsonArray array) {
         String[] strings = new String[array.size()];
-        for (int i = 0; i < strings.length;i++)  {
+        for (int i = 0; i < strings.length; i++) {
             strings[i] = array.get(i).getAsString();
         }
         return strings;

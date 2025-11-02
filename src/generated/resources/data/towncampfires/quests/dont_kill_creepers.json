@@ -13,7 +13,7 @@
     "weight": 1,
     "whitelist": true
   },
-  "attempts": 0,
+  "attempts": 1,
   "compact_desc": [
     "{\"color\":\"dark_gray\",\"text\":\"Don't kill any creepers\"}"
   ],
@@ -64,12 +64,22 @@
   "multiplayer_type": "prep_solo",
   "name": "{\"color\":\"gold\",\"text\":\"Don't kill Creepers\"}",
   "punishments": {
+    "add_effects": [
+      {
+        "Ambient": false,
+        "Amplifier": 0,
+        "Duration": 600,
+        "ShowIcon": true,
+        "ShowParticles": true,
+        "forge:id": "minecraft:poison"
+      }
+    ],
     "player_experience": -1000
   },
   "rewards": {
     "campfire_experience": 100,
     "player_experience": 100
   },
-  "slots": 20,
+  "slots": 10,
   "weight": 1
 }

@@ -1,6 +1,6 @@
-// 1.19.2	2025-09-29T21:03:30.640146	Quests
-e860d78349281e56f815c2ce69341bd31a8acd0d data/towncampfires/quests/dont_kill_creepers.json
+// 1.19.2	2025-11-01T19:16:13.1315855	Quests
+02d66d569c5c741fc2533855e89f0421df50554d data/towncampfires/quests/dont_kill_creepers.json
 b408918a2f56133bedc3af1afcc6fb7043fe7d82 data/towncampfires/quests/example_level_quest_0.json
-b3d21cbd52c4c036eb448f31b1e58ae3160b2bf0 data/towncampfires/quests/example_quest_0.json
+b7a4a88da1a40b53db5362657b14ab47c4bf7391 data/towncampfires/quests/example_quest_0.json
 b0e62a073736d49866a973d3a3fb0a2980640cb4 data/towncampfires/quests/example_quest_1.json
-5e2635510f9fc0d67d4af7c9e827477ed99f8da3 data/towncampfires/quests/kill_zombie.json
+9b931ac2c4da0199f33f897ebfb198d3aa0b5c03 data/towncampfires/quests/kill_zombie.json

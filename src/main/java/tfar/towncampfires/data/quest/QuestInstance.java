@@ -14,6 +14,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.effect.MobEffect;
 import net.minecraftforge.common.util.Lazy;
 import tfar.towncampfires.CampfireLevelData;
 import tfar.towncampfires.TownCampfire;
@@ -297,6 +298,14 @@ public class QuestInstance {
             }
         }
         toRemove.forEach(members::remove);
+    }
+
+    public boolean isEffectForbidden(MobEffect effect) {
+        return quest().failureCriteria().forbiddenBuffs().contains(effect);
+    }
+
+    public boolean isStageForbidden(String stage) {
+        return quest().failureCriteria().forbiddenStages().contains(stage);
     }
 
 

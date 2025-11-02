@@ -1,6 +1,7 @@
 package tfar.towncampfires;
 
 import com.mojang.logging.LogUtils;
+import net.darkhax.gamestages.event.GameStageEvent;
 import net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance;
 import net.minecraft.advancements.critereon.SimpleCriterionTrigger;
 import net.minecraft.core.BlockPos;
@@ -10,6 +11,7 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
@@ -26,6 +28,7 @@ import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.MobEffectEvent;
 import net.minecraftforge.event.entity.player.PlayerEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.server.ServerAboutToStartEvent;
@@ -101,20 +104,43 @@ public class TownCampfires
         MinecraftForge.EVENT_BUS.addListener(this::sync);
         MinecraftForge.EVENT_BUS.addListener(this::playerLogin);
         MinecraftForge.EVENT_BUS.addListener(this::onDeath);
+        MinecraftForge.EVENT_BUS.addListener(this::onEffectAdded);
+        MinecraftForge.EVENT_BUS.addListener(this::onStageAdded);
     }
 
     void onDeath(LivingDeathEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(player.server.overworld());
+            CampfireLevelData campfireLevelData = CampfireLevelData.get(player.server.overworld());
             if (campfireLevelData != null) {
                 campfireLevelData.checkDeathCriteria(player);
             }
         }
     }
 
+    void onEffectAdded(MobEffectEvent.Added event) {
+        LivingEntity livingEntity = event.getEntity();
+        if (livingEntity instanceof ServerPlayer player) {
+            CampfireLevelData campfireLevelData = CampfireLevelData.get(player.server.overworld());
+            if (campfireLevelData != null) {
+                campfireLevelData.checkEffectAddedCriteria(player,event.getEffectInstance().getEffect());
+            }
+        }
+    }
+
+    void onStageAdded(GameStageEvent.Added event) {
+        Player livingEntity = event.getEntity();
+        if (livingEntity instanceof ServerPlayer player) {
+            CampfireLevelData campfireLevelData = CampfireLevelData.get(player.server.overworld());
+            if (campfireLevelData != null) {
+                String stageName = event.getStageName();
+                campfireLevelData.checkStageAddedCriteria(player,stageName);
+            }
+        }
+    }
+
     void playerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         ServerPlayer player = (ServerPlayer) event.getEntity();
-        CampfireLevelData campfireLevelData = CampfireLevelData.getOrCreate(player.server.overworld());
+        CampfireLevelData campfireLevelData = CampfireLevelData.get(player.server.overworld());
         if (campfireLevelData != null) {
                 campfireLevelData.sendDataTo(player);
         }
