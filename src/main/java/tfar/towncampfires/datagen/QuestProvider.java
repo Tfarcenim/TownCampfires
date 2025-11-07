@@ -7,6 +7,7 @@ import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.CriteriaTriggers;
 import net.minecraft.advancements.critereon.KilledTrigger;
+import net.minecraft.advancements.critereon.PlacedBlockTrigger;
 import net.minecraft.commands.CommandFunction;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataGenerator;
@@ -15,6 +16,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.data.quest.QuestCriteria;
@@ -64,18 +66,28 @@ public class QuestProvider implements DataProvider {
                         Pair.of(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(),
                                 Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count));
 
-        FinishedQuest.builder().name(Component.literal("Example Quest 0").withStyle(ChatFormatting.RED),Component.literal("Ex. Q0"))
-                .desc(Component.literal("Example Quest 0 Description").withStyle(ChatFormatting.DARK_GRAY))
-                .compactDesc(Component.literal("Ex Q0 Desc").withStyle(ChatFormatting.DARK_GRAY))
+        FinishedQuest.builder().name(Component.literal("Kill Mobs").withStyle(ChatFormatting.RED))
+                .desc(Component.literal("Kill any 2 mobs").withStyle(ChatFormatting.DARK_GRAY))
                 .setSuccessCriteria(new SuccessCriteria(successCriteria))
-                .addStages("Quest 1")
                 .rewards(
                         new QuestRewards(100,100,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
-                                new String[]{"Completed Quest 1"},new String[]{"Quest 1"}, List.of(new MobEffectInstance(MobEffects.REGENERATION,600)),List.of()))
+                                new String[]{"Completed Kill Mobs"},new String[]{"Kill Mobs"}, List.of(new MobEffectInstance(MobEffects.REGENERATION,600)),List.of()))
                 .punishment(
                         new QuestRewards(-1000,0,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
-                                new String[]{"Failed Quest 1"},new String[]{"Quest 1"}, List.of(new MobEffectInstance(MobEffects.POISON,600)),List.of()))
-                .save(consumer, TownCampfires.id("example_quest_0"));
+                                new String[]{"Failed Kill Mobs"},new String[]{"Kill Mobs"}, List.of(new MobEffectInstance(MobEffects.POISON,600)),List.of()))
+                .save(consumer, TownCampfires.id("kill_mobs"));
+
+        List<Pair<QuestCriteria<?>, Integer>> placeCriteria = List.of(
+                Pair.of(new QuestCriteria<>(CriteriaTriggers.PLACED_BLOCK, PlacedBlockTrigger.TriggerInstance.placedBlock(Blocks.OAK_FENCE),
+                        Component.literal("Place oak fences").withStyle(ChatFormatting.DARK_GRAY)),3));
+
+        FinishedQuest.builder().name(Component.literal("Place fence").withStyle(ChatFormatting.RED))
+                .desc(Component.literal("Place some oak fences").withStyle(ChatFormatting.DARK_GRAY))
+                .setSuccessCriteria(new SuccessCriteria(placeCriteria))
+                .rewards(
+                        new QuestRewards(100,100,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
+                                new String[]{},new String[]{}, List.of(new MobEffectInstance(MobEffects.REGENERATION,600)),List.of()))
+                .save(consumer, TownCampfires.id("place_oak_fences"));
 
     }
 

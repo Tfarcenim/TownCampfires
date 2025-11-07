@@ -42,7 +42,7 @@ public final class TownCampfire {
                     MiscCodecs.COMPONENT_CODEC.fieldOf("name").forGetter(TownCampfire::name),
                     Codec.LONG.fieldOf("experience").forGetter(TownCampfire::getExperience),
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_blocks").forGetter(TownCampfire::getUsedBlocks),
-                    ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedBlocks),
+                    ExtraCodecs.NON_NEGATIVE_INT.fieldOf("used_workbenches").forGetter(TownCampfire::getUsedWorkbenches),
                     ResourceLocation.CODEC.listOf().fieldOf("visible_quests").forGetter(TownCampfire::getQuestIds),
                     ExtraCodecs.NON_NEGATIVE_INT.fieldOf("max_quests").forGetter(campfire -> campfire.maxQuests)
                     ).apply(instance, TownCampfire::new));
@@ -72,9 +72,13 @@ public final class TownCampfire {
         this.experience = experience;
         this.usedBlocks = usedBlocks;
         this.usedWorkbenches = usedWorkbenches;
-        this.quests = quests;
+        this.quests = removeInvalidQuests(quests);
         this.maxQuests = maxQuests;
         removeInvalidEffects();
+    }
+
+    List<ResourceLocation> removeInvalidQuests(List<ResourceLocation> quests) {
+        return quests.stream().filter(resourceLocation -> TownCampfires.questLoader.questStillExists(resourceLocation)).toList();
     }
 
     public TownCampfire constructForPlayer(ServerPlayer player, CampfireLevelData campfireLevelData) {
@@ -362,13 +366,25 @@ public final class TownCampfire {
 
     @Override
     public String toString() {
-        return "TownCampfire[" +
-                "location=" + location + ", " +
-                "name=" + name + ']';
+        return "TownCampfire{" +
+                "location=" + location +
+                ", name=" + name +
+                ", experience=" + experience +
+                ", currentVillagers=" + currentVillagers +
+                ", usedBlocks=" + usedBlocks +
+                ", usedWorkbenches=" + usedWorkbenches +
+                ", random=" + random +
+                ", effects=" + effects +
+                ", quests=" + quests +
+                ", levelQuest=" + levelQuest +
+                ", maxQuests=" + maxQuests +
+                ", resync=" + resync +
+                ", nearbyBiomes=" + nearbyBiomes +
+                ", aabb=" + aabb +
+                '}';
     }
 
-
-    public void update(ServerLevel pLevel,boolean refresh) {
+    public void update(ServerLevel pLevel, boolean refresh) {
         double radius = getRadius();
         boolean loaded = isLoaded(pLevel);
 

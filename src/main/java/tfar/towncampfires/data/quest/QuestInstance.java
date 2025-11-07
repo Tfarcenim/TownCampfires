@@ -16,6 +16,7 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraftforge.common.util.Lazy;
+import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.CampfireLevelData;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
@@ -158,8 +159,12 @@ public class QuestInstance {
         return tag;
     }
 
+    @Nullable
     public static QuestInstance load(CompoundTag tag) {
         ResourceLocation questID = new ResourceLocation(tag.getString("quest"));
+
+        if (!TownCampfires.questLoader.questStillExists(questID)) return null;
+
         UUID leader = UUID.fromString(tag.getString("leader"));
         Status status = Status.valueOf(tag.getString("status"));
         QuestInstance questInstance = new QuestInstance(questID,leader,status);

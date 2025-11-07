@@ -58,6 +58,10 @@ public class FinishedQuest {
         int attempts = 1;
         final List<String> stages = new ArrayList<>();
 
+        public Builder name(Component name) {
+            return name(name,null);
+        }
+
         public Builder name(Component name, @Nullable Component compactName) {
             this.name = name;
             compact_name = compactName != null ? compactName : name;

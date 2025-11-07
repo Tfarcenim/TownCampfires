@@ -736,6 +736,11 @@ public class TownCampfireScreen extends BasicScreen {
         }
 
         @Override
+        public boolean isMouseOver(double pMouseX, double pMouseY) {
+            return visible && super.isMouseOver(pMouseX, pMouseY);
+        }
+
+        @Override
         public int getRowWidth() {
             return width;
         }
@@ -780,12 +785,8 @@ public class TownCampfireScreen extends BasicScreen {
 
             @Override
             public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
-                if (visible) {
-                    setSelected(this);
-                    return true;
-                }  else {
-                    return false;
-                }
+                setSelected(this);
+                return true;
             }
 
             @Override
@@ -837,15 +838,19 @@ public class TownCampfireScreen extends BasicScreen {
             super.setSelected(pSelected);
             if (pSelected != null) {
                 QuestInstance questInstance = pSelected.questInstance;
-                if (questInstance.status() == QuestInstance.Status.PREP) {
-                    finishQuest.visible = false;
-                    startQuest.visible = true;
-                    startQuest.active = true;
-                    startQuest.setMessage(TextComponents.START_QUEST);
-                } else if (questInstance.status() == QuestInstance.Status.IN_PROGRESS) {
-                    finishQuest.visible = true;
-                    info.visible = true;
-                    finishQuest.active = pSelected.questInstance.status() == QuestInstance.Status.COMPLETE;
+                QuestInstance.Status status = questInstance.status();
+                switch (status) {
+                    case PREP -> {
+                        finishQuest.visible = false;
+                        startQuest.visible = true;
+                        startQuest.active = true;
+                        startQuest.setMessage(TextComponents.START_QUEST);
+                    }
+                    case IN_PROGRESS,COMPLETE -> {
+                        finishQuest.visible = true;
+                        info.visible = true;
+                        finishQuest.active = status == QuestInstance.Status.COMPLETE;
+                    }
                 }
             }
         }
@@ -882,6 +887,11 @@ public class TownCampfireScreen extends BasicScreen {
         }
 
         @Override
+        public boolean isMouseOver(double pMouseX, double pMouseY) {
+            return visible && super.isMouseOver(pMouseX, pMouseY);
+        }
+
+        @Override
         protected int getScrollbarPosition() {
             return x1;
         }
@@ -895,12 +905,8 @@ public class TownCampfireScreen extends BasicScreen {
 
             @Override
             public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
-                if (visible) {
-                    setSelected(this);
-                    return true;
-                }  else {
-                    return false;
-                }
+                setSelected(this);
+                return true;
             }
 
             @Override

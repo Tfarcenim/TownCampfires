@@ -98,6 +98,10 @@ public class QuestLoader extends SimpleJsonResourceReloadListener {
         return list;
     }
 
+    public boolean questStillExists(ResourceLocation location) {
+        return questMap.containsKey(location);
+    }
+
     public List<ResourceLocation> getEligibleQuests(TownCampfire campfire, ServerLevel level) {
         int maxQuests = campfire.getMaxQuests();
 

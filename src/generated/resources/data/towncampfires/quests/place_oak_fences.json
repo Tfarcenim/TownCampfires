@@ -15,23 +15,25 @@
   },
   "attempts": 1,
   "compact_desc": [
-    "{\"color\":\"dark_gray\",\"text\":\"Ex Q0 Desc\"}"
+    "{\"color\":\"dark_gray\",\"text\":\"Place some oak fences\"}"
   ],
-  "compact_name": "{\"text\":\"Ex. Q0\"}",
+  "compact_name": "{\"color\":\"red\",\"text\":\"Place fence\"}",
   "criteria": {
     "custom": [
       {
-        "count": 2,
+        "count": 3,
         "trigger": {
-          "conditions": {},
-          "desc": "{\"color\":\"dark_gray\",\"text\":\"Kill Mobs\"}",
-          "trigger": "minecraft:player_killed_entity"
+          "conditions": {
+            "block": "minecraft:oak_fence"
+          },
+          "desc": "{\"color\":\"dark_gray\",\"text\":\"Place oak fences\"}",
+          "trigger": "minecraft:placed_block"
         }
       }
     ]
   },
   "desc": [
-    "{\"color\":\"dark_gray\",\"text\":\"Example Quest 0 Description\"}"
+    "{\"color\":\"dark_gray\",\"text\":\"Place some oak fences\"}"
   ],
   "difficulty": 1,
   "failure_criteria": {
@@ -44,26 +46,7 @@
   },
   "level_up": false,
   "multiplayer_type": "solo",
-  "name": "{\"color\":\"red\",\"text\":\"Example Quest 0\"}",
-  "punishments": {
-    "add_effects": [
-      {
-        "Ambient": false,
-        "Amplifier": 0,
-        "Duration": 600,
-        "ShowIcon": true,
-        "ShowParticles": true,
-        "forge:id": "minecraft:poison"
-      }
-    ],
-    "add_gamestages": [
-      "Failed Quest 1"
-    ],
-    "player_experience": -1000,
-    "remove_gamestages": [
-      "Quest 1"
-    ]
-  },
+  "name": "{\"color\":\"red\",\"text\":\"Place fence\"}",
   "rewards": {
     "add_effects": [
       {
@@ -75,14 +58,8 @@
         "forge:id": "minecraft:regeneration"
       }
     ],
-    "add_gamestages": [
-      "Completed Quest 1"
-    ],
     "campfire_experience": 100,
-    "player_experience": 100,
-    "remove_gamestages": [
-      "Quest 1"
-    ]
+    "player_experience": 100
   },
   "slots": 1,
   "weight": 1

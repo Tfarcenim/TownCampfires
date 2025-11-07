@@ -1,2 +1,3 @@
-// 1.19.2	2025-11-07T12:14:59.2366351	Quests
-0a37dc6eb82ae129d09cba6e601ac226b48ba4db data/towncampfires/quests/example_quest_0.json
+// 1.19.2	2025-11-07T14:49:35.1422242	Quests
+9f6dc18e3d982b4f9b19b96b33c3f6f277a764a6 data/towncampfires/quests/kill_mobs.json
+38fec0b9784e753e04ee2e0c6545cf47be93e9dc data/towncampfires/quests/place_oak_fences.json

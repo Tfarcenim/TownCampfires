@@ -421,7 +421,9 @@ public class CampfireLevelData extends SavedData {
         ListTag currentQuestsTag = compoundTag.getList("current_quests", CompoundTag.TAG_COMPOUND);
         for (Tag t : currentQuestsTag) {
             QuestInstance questInstance = QuestInstance.load((CompoundTag) t);
-            currentQuests.add(questInstance);
+            if (questInstance != null) {
+                currentQuests.add(questInstance);
+            }
         }
 
 
@@ -431,7 +433,10 @@ public class CampfireLevelData extends SavedData {
             Set<ResourceLocation> set = new HashSet<>();
             for (Tag t : listTag) {
                 StringTag stringTag = (StringTag) t;
-                set.add(new ResourceLocation(stringTag.getAsString()));
+                ResourceLocation location = new ResourceLocation(stringTag.getAsString());
+                if (TownCampfires.questLoader.questStillExists(location)) {
+                    set.add(location);
+                }
             }
             completedQuests.put(UUID.fromString(key), set);
         }
