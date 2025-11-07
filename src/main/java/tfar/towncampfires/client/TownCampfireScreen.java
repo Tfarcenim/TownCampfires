@@ -336,7 +336,7 @@ public class TownCampfireScreen extends BasicScreen {
                             }
                             int completeY = 90;
                             font.draw(pPoseStack,Component.literal("Progress"),xStart,yStart+completeY,DARK_GRAY);
-                            List<Pair<QuestCriteria<?>, Integer>> criterias = questInstance.quest().criterias();
+                            List<Pair<QuestCriteria<?>, Integer>> criterias = questInstance.quest().successCriteria().custom();
                             for (int i = 0; i < criterias.size(); i++) {
                                 Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
                                 QuestCriteria<?> criteria = entry.getFirst();
@@ -347,7 +347,7 @@ public class TownCampfireScreen extends BasicScreen {
                                 font.draw(pPoseStack,criteria.desc().copy().append(" "+progress+"/"+count),xStart,yStart + completeY +spacing +  spacing * i,0xffffff);
                             }
 
-                            int yLine = yStart + 110 + questInstance.quest().criterias().size() * spacing;
+                            int yLine = yStart + 110 + questInstance.quest().successCriteria().custom().size() * spacing;
 
                             font.draw(pPoseStack,Component.literal("Members"),xStart,yLine,DARK_GRAY);
 
@@ -392,7 +392,7 @@ public class TownCampfireScreen extends BasicScreen {
                             Component xp = Component.literal("XP:"+quest.rewards().campfireExperience());
                             font.draw(pPoseStack,xp,xStart+imageWidth/2 - 4 - font.width(xp),yStart+completeY+12*3,DARK_GRAY);
 
-                            List<Pair<QuestCriteria<?>, Integer>> criterias = quest.criterias();
+                            List<Pair<QuestCriteria<?>, Integer>> criterias = quest.successCriteria().custom();
                             for (int i = 0; i < criterias.size(); i++) {
                                 Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
                                 QuestCriteria<?> criteria = entry.getFirst();

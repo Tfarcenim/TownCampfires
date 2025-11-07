@@ -111,8 +111,8 @@ public class TownCampfiresClient {
             Quest quest = questInstance.quest();
 
             font.draw(poseStack,quest.name().copy().append(questInstance.status() == QuestInstance.Status.PREP ? " (Prep)":""),5,startY+i * 20,0xffffff);
-            for (int j = 0 ; j < quest.criterias().size();j++) {
-                Pair<QuestCriteria<?>, Integer> questCriteriaIntegerPair = quest.criterias().get(j);
+            for (int j = 0; j < quest.successCriteria().custom().size(); j++) {
+                Pair<QuestCriteria<?>, Integer> questCriteriaIntegerPair = quest.successCriteria().custom().get(j);
                 int needed= questCriteriaIntegerPair.getSecond();
                 Integer progress = questInstance.progress().isEmpty() ? 0 : questInstance.progress().get(j);
                 font.draw(poseStack,questCriteriaIntegerPair.getFirst().desc().copy().append(" "+progress+"/"+needed),5, startY + i * 20 + 10, 0xffffff);

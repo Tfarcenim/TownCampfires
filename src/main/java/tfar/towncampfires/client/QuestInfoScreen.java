@@ -74,7 +74,7 @@ public class QuestInfoScreen extends BasicScreen {
         }
         font.draw(pPoseStack, Component.literal("Complete Conditions"), xStart, yLine, TownCampfireScreen.DARK_GRAY);
         yLine += spacing;
-        List<Pair<QuestCriteria<?>, Integer>> criterias = quest.criterias();
+        List<Pair<QuestCriteria<?>, Integer>> criterias = quest.successCriteria().custom();
         for (int i = 0; i < criterias.size(); i++) {
             Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
             QuestCriteria<?> criteria = entry.getFirst();

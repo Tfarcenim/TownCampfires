@@ -12,11 +12,9 @@ import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.config.IntegerRange;
 import tfar.towncampfires.data.quest.*;
 import tfar.towncampfires.data.quest.criteria.FailureCriteria;
+import tfar.towncampfires.data.quest.criteria.SuccessCriteria;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.function.Consumer;
 
 public class FinishedQuest {
@@ -44,7 +42,7 @@ public class FinishedQuest {
                 true,BiomeTags.IS_OVERWORLD, IntegerRange.inclusive(0,Integer.MAX_VALUE),1,IntegerRange.inclusive(0,Integer.MAX_VALUE));
         Quest.MultiplayerType multiplayerType = Quest.MultiplayerType.solo;
 
-        List<Pair<QuestCriteria<?>,Integer>> criteria = new ArrayList<>();
+        SuccessCriteria criteria;
 
         FailureCriteria failureCriteria = FailureCriteria.EMPTY;
 
@@ -97,12 +95,8 @@ public class FinishedQuest {
             return this;
         }
 
-        public Builder addCriteria(QuestCriteria<?> criteria) {
-            return addCriteria(criteria,1);
-        }
-
-        public Builder addCriteria(QuestCriteria<?> criteria,int count) {
-            this.criteria.add(Pair.of(criteria,count));
+        public Builder setSuccessCriteria(SuccessCriteria criteria) {
+            this.criteria = criteria;
             return this;
         }
 
@@ -161,6 +155,7 @@ public class FinishedQuest {
         }
 
         private FinishedQuest build(ResourceLocation id) {
+            Objects.requireNonNull(criteria,"criteria cannot be null!");
             return new FinishedQuest(id,new Quest(name,icon,desc,questAppearanceConditions, multiplayerType,
                     criteria,rewards, failureCriteria,punishments,levelUp,weight, compact_name,compact_desc,difficulty,slots,attempts,stages));
         }

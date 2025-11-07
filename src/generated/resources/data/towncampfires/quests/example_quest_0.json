@@ -18,16 +18,18 @@
     "{\"color\":\"dark_gray\",\"text\":\"Ex Q0 Desc\"}"
   ],
   "compact_name": "{\"text\":\"Ex. Q0\"}",
-  "criteria": [
-    {
-      "count": 2,
-      "trigger": {
-        "conditions": {},
-        "desc": "{\"color\":\"dark_gray\",\"text\":\"Kill Mobs\"}",
-        "trigger": "minecraft:player_killed_entity"
+  "criteria": {
+    "custom": [
+      {
+        "count": 2,
+        "trigger": {
+          "conditions": {},
+          "desc": "{\"color\":\"dark_gray\",\"text\":\"Kill Mobs\"}",
+          "trigger": "minecraft:player_killed_entity"
+        }
       }
-    }
-  ],
+    ]
+  },
   "desc": [
     "{\"color\":\"dark_gray\",\"text\":\"Example Quest 0 Description\"}"
   ],

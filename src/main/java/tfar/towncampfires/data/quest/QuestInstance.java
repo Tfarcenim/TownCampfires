@@ -232,7 +232,7 @@ public class QuestInstance {
         if (!status.active) return false;
         Quest quest = quest();
         boolean update = false;
-        var criterias = quest.criterias();
+        var criterias = quest.successCriteria().custom();
         int criteriaCount = criterias.size();
         for (int i = 0 ; i <criteriaCount;i++) {
             Pair<QuestCriteria<?>, Integer> pair = criterias.get(i);
@@ -266,7 +266,7 @@ public class QuestInstance {
         }
 
         boolean complete = true;
-        List<Pair<QuestCriteria<?>, Integer>> criterias = quest().criterias();
+        List<Pair<QuestCriteria<?>, Integer>> criterias = quest().successCriteria().custom();
         for (int i = 0; i < criterias.size(); i++) {
             Pair<QuestCriteria<?>, Integer> criteria = criterias.get(i);
             int progress = progress().isEmpty() || progress().size() <= i ? 0 : progress().get(i);

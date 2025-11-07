@@ -10,6 +10,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.GsonHelper;
 import net.minecraft.world.effect.MobEffect;
+import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestCriteria;
 
 import java.util.ArrayList;
@@ -30,14 +31,7 @@ public record FailureCriteria(List<Pair<QuestCriteria<?>, Integer>> custom, bool
     public JsonObject serializeToJson() {
         JsonObject jsonObject = new JsonObject();
         if (!custom.isEmpty()) {
-            JsonArray jsonArray = new JsonArray(custom.size());
-            for (Pair<QuestCriteria<?>, Integer> criteria : custom) {
-                JsonObject o = new JsonObject();
-                o.add("trigger", criteria.getFirst().serializeToJson());
-                o.addProperty("count", criteria.getSecond());
-                jsonArray.add(o);
-            }
-            jsonObject.add("custom", jsonArray);
+            jsonObject.add("custom", Quest.serializeCriteria(custom));
         }
         jsonObject.addProperty("death", death);
         jsonObject.addProperty("timer",timer);
@@ -60,14 +54,7 @@ public record FailureCriteria(List<Pair<QuestCriteria<?>, Integer>> custom, bool
     public static FailureCriteria deserialize(JsonObject jsonObject, DeserializationContext context) {
         JsonArray customCriteria = GsonHelper.getAsJsonArray(jsonObject, "custom", new JsonArray());
 
-        List<Pair<QuestCriteria<?>, Integer>> criterias = new ArrayList<>(customCriteria.size());
-
-        for (JsonElement element : customCriteria) {
-            JsonObject o = element.getAsJsonObject();
-            QuestCriteria<?> questCriteria = QuestCriteria.criterionFromJson(o.get("trigger").getAsJsonObject(), context);
-            int count = GsonHelper.getAsInt(o, "count", 1);
-            criterias.add(Pair.of(questCriteria, count));
-        }
+        List<Pair<QuestCriteria<?>, Integer>> criterias = Quest.readCriteria(customCriteria,context);
 
         boolean death = GsonHelper.getAsBoolean(jsonObject,"death",false);
         long timer = GsonHelper.getAsLong(jsonObject,"timer",-1);
