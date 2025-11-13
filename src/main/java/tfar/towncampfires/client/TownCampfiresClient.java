@@ -114,7 +114,7 @@ public class TownCampfiresClient {
             for (int j = 0; j < quest.successCriteria().custom().size(); j++) {
                 Pair<QuestCriteria<?>, Integer> questCriteriaIntegerPair = quest.successCriteria().custom().get(j);
                 int needed= questCriteriaIntegerPair.getSecond();
-                Integer progress = questInstance.progress().isEmpty() ? 0 : questInstance.progress().get(j);
+                Integer progress = questInstance.customProgress().isEmpty() ? 0 : questInstance.customProgress().get(j);
                 font.draw(poseStack,questCriteriaIntegerPair.getFirst().desc().copy().append(" "+progress+"/"+needed),5, startY + i * 20 + 10, 0xffffff);
             }
         }

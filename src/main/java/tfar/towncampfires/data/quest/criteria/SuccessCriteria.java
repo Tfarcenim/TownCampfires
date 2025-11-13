@@ -13,7 +13,7 @@ import tfar.towncampfires.data.quest.QuestCriteria;
 import java.util.ArrayList;
 import java.util.List;
 
-public record SuccessCriteria(List<Pair<QuestCriteria<?>, Integer>> custom) {
+public record SuccessCriteria(List<Pair<QuestCriteria<?>, Integer>> custom,List<Delivery> deliveries) {
 
     public static SuccessCriteria deserialize(JsonObject jsonObject, DeserializationContext context) {
         JsonArray customCriteria = GsonHelper.getAsJsonArray(jsonObject, "custom", new JsonArray());
@@ -26,7 +26,16 @@ public record SuccessCriteria(List<Pair<QuestCriteria<?>, Integer>> custom) {
             int count = GsonHelper.getAsInt(o, "count", 1);
             criterias.add(Pair.of(questCriteria, count));
         }
-        return new SuccessCriteria(criterias);
+
+        List<Delivery> deliveries1 = new ArrayList<>();
+        JsonArray deliveryCriteria = GsonHelper.getAsJsonArray(jsonObject,"delivery");
+        for (JsonElement element : deliveryCriteria) {
+            JsonObject o = element.getAsJsonObject();
+            Delivery delivery = Delivery.fromJson(o);
+            deliveries1.add(delivery);
+        }
+
+        return new SuccessCriteria(criterias,deliveries1);
     }
 
     public void serializeToNetwork(FriendlyByteBuf buffer) {
@@ -34,11 +43,13 @@ public record SuccessCriteria(List<Pair<QuestCriteria<?>, Integer>> custom) {
             questCriteriaIntegerPair.getFirst().serializeToNetwork(buf1);
             buf1.writeInt(questCriteriaIntegerPair.getSecond());
         });
+        buffer.writeCollection(deliveries,(buf, delivery) -> delivery.toPacket(buf));
     }
 
     public static SuccessCriteria fromNetwork(FriendlyByteBuf pBuffer) {
         List<Pair<QuestCriteria<?>, Integer>> pairs = pBuffer.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt()));
-        return new SuccessCriteria(pairs);
+        List<Delivery> deliveries1 = pBuffer.readList(Delivery::fromPacket);
+        return new SuccessCriteria(pairs,deliveries1);
     }
 
 
@@ -46,6 +57,14 @@ public record SuccessCriteria(List<Pair<QuestCriteria<?>, Integer>> custom) {
         JsonObject jsonObject = new JsonObject();
         if (!custom.isEmpty()) {
             jsonObject.add("custom", Quest.serializeCriteria(custom));
+        }
+        if (!deliveries.isEmpty()) {
+            JsonArray array = new JsonArray();
+            for (Delivery delivery : deliveries) {
+                JsonObject o = delivery.toJson();
+                array.add(o);
+            }
+            jsonObject.add("deliveries",array);
         }
         return jsonObject;
     }

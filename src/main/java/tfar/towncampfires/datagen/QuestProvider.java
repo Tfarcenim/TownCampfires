@@ -25,6 +25,7 @@ import tfar.towncampfires.data.quest.criteria.SuccessCriteria;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -68,7 +69,7 @@ public class QuestProvider implements DataProvider {
 
         FinishedQuest.builder().name(Component.literal("Kill Mobs").withStyle(ChatFormatting.RED))
                 .desc(Component.literal("Kill any 2 mobs").withStyle(ChatFormatting.DARK_GRAY))
-                .setSuccessCriteria(new SuccessCriteria(successCriteria))
+                .setSuccessCriteria(new SuccessCriteria(successCriteria,new ArrayList<>()))
                 .rewards(
                         new QuestRewards(100,100,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
                                 new String[]{"Completed Kill Mobs"},new String[]{"Kill Mobs"}, List.of(new MobEffectInstance(MobEffects.REGENERATION,600)),List.of()))
@@ -83,7 +84,7 @@ public class QuestProvider implements DataProvider {
 
         FinishedQuest.builder().name(Component.literal("Place fence").withStyle(ChatFormatting.RED))
                 .desc(Component.literal("Place some oak fences").withStyle(ChatFormatting.DARK_GRAY))
-                .setSuccessCriteria(new SuccessCriteria(placeCriteria))
+                .setSuccessCriteria(new SuccessCriteria(placeCriteria,new ArrayList<>()))
                 .rewards(
                         new QuestRewards(100,100,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
                                 new String[]{},new String[]{}, List.of(new MobEffectInstance(MobEffects.REGENERATION,600)),List.of()))

@@ -6,10 +6,7 @@ import net.minecraft.advancements.CriterionTriggerInstance;
 import net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance;
 import net.minecraft.advancements.critereon.SimpleCriterionTrigger;
 import net.minecraft.core.NonNullList;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
-import net.minecraft.nbt.Tag;
+import net.minecraft.nbt.*;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -22,6 +19,7 @@ import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.compat.GameStagesCompat;
 import tfar.towncampfires.compat.LoadedMods;
+import tfar.towncampfires.data.quest.criteria.CriteriaType;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -31,9 +29,7 @@ public class QuestInstance {
     private final ResourceLocation questID;
     private final UUID leader;
     List<UUID> members = new ArrayList<>();
-    List<Integer> progress;
-
-    List<Integer> failureProgress;
+    Map<CriteriaType,List<Integer>> progress = new EnumMap<>(CriteriaType.class);
 
     Lazy<Quest> questLazy;
 
@@ -62,17 +58,15 @@ public class QuestInstance {
         this.leader = leader;
         this.status = status;
         members.add(leader);
-        progress = new ArrayList<>();
-        failureProgress = new ArrayList<>();
         questLazy= Lazy.of(() -> TownCampfires.questLoader.getQuestMap().get(questID));
+
     }
 
     public void toPacket(FriendlyByteBuf buf) {
         buf.writeResourceLocation(questID);
         buf.writeEnum(status);
         buf.writeUUID(leader);
-        buf.writeCollection(progress, FriendlyByteBuf::writeInt);
-        buf.writeCollection(failureProgress, FriendlyByteBuf::writeInt);
+        buf.writeMap(progress, FriendlyByteBuf::writeEnum,(buf1, integers) -> buf1.writeCollection(integers, FriendlyByteBuf::writeInt));
         buf.writeLong(startTime);
     }
 
@@ -80,13 +74,10 @@ public class QuestInstance {
         ResourceLocation questID = buf.readResourceLocation();
         Status active = buf.readEnum(Status.class);
         UUID leader = buf.readUUID();
-        List<Integer> integers = buf.readList(FriendlyByteBuf::readInt);
-        List<Integer> failIntegers = buf.readList(FriendlyByteBuf::readInt);
+        Map<CriteriaType,List<Integer>> map = buf.readMap(buf1 -> buf1.readEnum(CriteriaType.class), buf1 -> buf1.readList(FriendlyByteBuf::readInt));
 
         QuestInstance questInstance = new QuestInstance(questID,leader,active);
-        questInstance.progress = integers;
-        questInstance.failureProgress = failIntegers;
-
+        questInstance.progress = map;
         questInstance.startTime = buf.readLong();
         return questInstance;
     }
@@ -103,11 +94,14 @@ public class QuestInstance {
         return questID;
     }
 
-    public List<Integer> progress() {
-        return progress;
+    public List<Integer> customProgress() {
+        return progress.get(CriteriaType.CUSTOM);
     }
+
+
+
     public List<Integer> failureProgress() {
-        return failureProgress;
+        return progress.get(CriteriaType.FAILURE);
     }
 
 
@@ -154,8 +148,11 @@ public class QuestInstance {
         }
         tag.put("members",listTag);
 
-        tag.putIntArray("progress",progress);
-
+        CompoundTag progressTag = new CompoundTag();
+        for (Map.Entry<CriteriaType,List<Integer>> entry : progress.entrySet()) {
+            progressTag.putIntArray(entry.getKey().name(), entry.getValue());
+        }
+        tag.put("progress",progressTag);
         return tag;
     }
 
@@ -174,15 +171,21 @@ public class QuestInstance {
             questInstance.addPlayer(UUID.fromString(tag1.getAsString()));
         }
 
-        int[] ints = tag.getIntArray("progress");
-        if (ints.length > 0) {
-            questInstance.progress = NonNullList.withSize(ints.length, 0);
+        CompoundTag progressTag = tag.getCompound("progress");
+
+
+        for(String key : progressTag.getAllKeys()) {
+            int[] ints = progressTag.getIntArray(key);
             for (int i = 0 ; i<ints.length;i++) {
-                questInstance.progress.set(i,ints[i]);
+                questInstance.progress.put(CriteriaType.valueOf(key),convert(ints));
             }
         }
 
         return questInstance;
+    }
+
+    static List<Integer> convert(int[] ints) {
+        return new ArrayList<>(Arrays.stream(ints).boxed().toList());
     }
 
     public <T extends AbstractCriterionTriggerInstance> boolean check(SimpleCriterionTrigger<T> trigger, ServerPlayer pPlayer, Predicate<T> pTestTrigger) {
@@ -222,7 +225,8 @@ public class QuestInstance {
 
             if (questCriteria.trigger() == trigger) {
                 if (pTestTrigger.test((T) o)) {
-                    if (failureProgress.isEmpty()) {
+                    List<Integer> failureProgress = progress.get(CriteriaType.FAILURE);
+                    if (failureProgress().isEmpty()) {
                         failureProgress = NonNullList.withSize(criteriaCount,0);
                     }
                     failureProgress.set(i, failureProgress.get(i) + 1);
@@ -246,10 +250,11 @@ public class QuestInstance {
 
             if (questCriteria.trigger() == trigger) {
                 if (pTestTrigger.test((T) o)) {
-                    if (progress.isEmpty()) {
-                        progress = NonNullList.withSize(criteriaCount,0);
+                    List<Integer> customProgress = progress.get(CriteriaType.CUSTOM);
+                    if (customProgress.isEmpty()) {
+                        customProgress = NonNullList.withSize(criteriaCount,0);
                     }
-                    progress.set(i, progress.get(i) + 1);
+                    customProgress.set(i, customProgress.get(i) + 1);
                     update = true;
                 }
             }
@@ -262,7 +267,7 @@ public class QuestInstance {
         List<Pair<QuestCriteria<?>, Integer>> failCriterias = quest().failureCriteria().custom();
         for (int i = 0; i < failCriterias.size(); i++) {
             Pair<QuestCriteria<?>, Integer> criteria = failCriterias.get(i);
-            int progress = progress().isEmpty() || progress().size() <= i ? 0 : progress().get(i);
+            int progress = customProgress().isEmpty() || customProgress().size() <= i ? 0 : customProgress().get(i);
             int required = criteria.getSecond();
             if (progress >= required) {
                 status = Status.FAILED;
@@ -274,7 +279,7 @@ public class QuestInstance {
         List<Pair<QuestCriteria<?>, Integer>> criterias = quest().successCriteria().custom();
         for (int i = 0; i < criterias.size(); i++) {
             Pair<QuestCriteria<?>, Integer> criteria = criterias.get(i);
-            int progress = progress().isEmpty() || progress().size() <= i ? 0 : progress().get(i);
+            int progress = customProgress().isEmpty() || customProgress().size() <= i ? 0 : customProgress().get(i);
             int required = criteria.getSecond();
             if (progress < required) {
                 complete = false;

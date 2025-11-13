@@ -342,7 +342,7 @@ public class TownCampfireScreen extends BasicScreen {
                                 QuestCriteria<?> criteria = entry.getFirst();
                                 int count = entry.getSecond();
 
-                                int progress = questInstance.progress().isEmpty() ? 0 : questInstance.progress().get(i);
+                                int progress = questInstance.customProgress().isEmpty() ? 0 : questInstance.customProgress().get(i);
 
                                 font.draw(pPoseStack,criteria.desc().copy().append(" "+progress+"/"+count),xStart,yStart + completeY +spacing +  spacing * i,0xffffff);
                             }
