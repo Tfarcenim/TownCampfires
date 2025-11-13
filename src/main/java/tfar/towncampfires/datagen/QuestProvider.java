@@ -13,13 +13,16 @@ import net.minecraft.data.DataGenerator;
 import net.minecraft.data.DataProvider;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.level.block.Blocks;
 import org.slf4j.Logger;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.data.quest.QuestCriteria;
 import tfar.towncampfires.data.quest.QuestRewards;
+import tfar.towncampfires.data.quest.criteria.Delivery;
 import tfar.towncampfires.data.quest.criteria.SuccessCriteria;
 
 import java.io.IOException;
@@ -86,6 +89,16 @@ public class QuestProvider implements DataProvider {
                         new QuestRewards(100,100,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
                                 new String[]{},new String[]{}, List.of(new MobEffectInstance(MobEffects.REGENERATION,600)),List.of()))
                 .save(consumer, TownCampfires.id("place_oak_fences"));
+
+
+        FinishedQuest.builder().name(Component.literal("Chop wood").withStyle(ChatFormatting.RED))
+                .icon(Blocks.OAK_LOG.asItem().getDefaultInstance())
+                .desc(Component.literal("Chop down some trees").withStyle(ChatFormatting.DARK_GRAY))
+                .setSuccessCriteria(new SuccessCriteria(new ArrayList<>(),List.of(new Delivery(Ingredient.of(ItemTags.LOGS),8))))
+                .rewards(
+                        new QuestRewards(100,100,new ResourceLocation[0], new ResourceLocation[0], CommandFunction.CacheableFunction.NONE,
+                                new String[]{},new String[]{}, List.of(new MobEffectInstance(MobEffects.REGENERATION,600)),List.of()))
+                .save(consumer, TownCampfires.id("chop_wood"));
 
     }
 

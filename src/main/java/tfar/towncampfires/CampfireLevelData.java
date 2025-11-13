@@ -560,5 +560,18 @@ public class CampfireLevelData extends SavedData {
         level.getServer().getPlayerList().getPlayers().forEach(this::sendDataTo);
         setDirty();
     }
+
+    public void tryDeliver(ServerPlayer player, ResourceLocation questID, TownCampfire townCampfire) {
+        Quest quest = TownCampfires.questLoader.getQuestMap().get(questID);
+        if (quest != null) {
+            QuestInstance questInstance = findExistingQuest(quest,player);
+            if (questInstance != null) {
+                if (questInstance.tryDeliver(player)){
+                    updatePlayers = true;
+                    setDirty();
+                }
+            }
+        }
+    }
 }
 

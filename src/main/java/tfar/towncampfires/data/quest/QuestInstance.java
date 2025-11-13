@@ -1,18 +1,23 @@
 package tfar.towncampfires.data.quest;
 
 import com.google.common.collect.ImmutableList;
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.advancements.CriterionTriggerInstance;
 import net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance;
 import net.minecraft.advancements.critereon.SimpleCriterionTrigger;
 import net.minecraft.core.NonNullList;
-import net.minecraft.nbt.*;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffect;
+import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.common.util.Lazy;
+import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.CampfireLevelData;
 import tfar.towncampfires.TownCampfire;
@@ -20,6 +25,7 @@ import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.compat.GameStagesCompat;
 import tfar.towncampfires.compat.LoadedMods;
 import tfar.towncampfires.data.quest.criteria.CriteriaType;
+import tfar.towncampfires.data.quest.criteria.Delivery;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -95,13 +101,15 @@ public class QuestInstance {
     }
 
     public List<Integer> customProgress() {
-        return progress.get(CriteriaType.CUSTOM);
+        return progress.computeIfAbsent(CriteriaType.CUSTOM,criteriaType -> new ArrayList<>());
     }
 
-
+    public List<Integer> deliveryProgress() {
+        return progress.computeIfAbsent(CriteriaType.DELIVERY,criteriaType -> NonNullList.withSize(quest().successCriteria().deliveries().size(),0));
+    }
 
     public List<Integer> failureProgress() {
-        return progress.get(CriteriaType.FAILURE);
+        return progress.computeIfAbsent(CriteriaType.FAILURE,criteriaType -> new ArrayList<>());
     }
 
 
@@ -284,6 +292,20 @@ public class QuestInstance {
                 break;
             }
         }
+
+
+        List<Delivery> deliveries = quest().successCriteria().deliveries();
+        for (int i = 0; i < deliveries.size(); i++) {
+            Delivery criteria = deliveries.get(i);
+            List<Integer> deliveryProgress = deliveryProgress();
+            int progress = deliveryProgress.isEmpty() || deliveryProgress.size() <= i ? 0 : deliveryProgress.get(i);
+            int required = criteria.required();
+            if (progress < required) {
+                complete = false;
+                break;
+            }
+        }
+
         if (complete) {
             status = Status.COMPLETE;
         }
@@ -314,6 +336,37 @@ public class QuestInstance {
 
     public boolean isStageForbidden(String stage) {
         return quest().failureCriteria().forbiddenStages().contains(stage);
+    }
+
+    public boolean tryDeliver(ServerPlayer player) {
+        if (status == QuestInstance.Status.IN_PROGRESS && hasPlayer(player)) {
+            boolean didAnything = false;
+            List<Delivery> deliveries = quest().successCriteria().deliveries();
+            for (int i = 0; i < deliveries.size(); i++) {
+                Delivery delivery = deliveries.get(i);
+                if (delivery.required() > deliveryProgress().get(i)) {
+                    IItemHandler handler = player.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+                    if (handler != null) {
+                        for (int slot = 0; slot < handler.getSlots();slot++ ) {
+                            ItemStack stack = handler.getStackInSlot(slot);
+                            if (delivery.ingredient().test(stack)) {
+                                int extractAmount = delivery.required() - deliveryProgress().get(i);
+                                ItemStack extracted = handler.extractItem(slot,extractAmount,false);
+                                if (!extracted.isEmpty()) {
+                                    deliveryProgress().set(i,deliveryProgress().get(i)+extracted.getCount());
+                                    didAnything = true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            if (didAnything) {
+                updateStatus();
+            }
+            return didAnything;
+        }
+        return false;
     }
 
 

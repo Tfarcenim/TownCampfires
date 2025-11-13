@@ -1,0 +1,62 @@
+{
+  "appearance_conditions": {
+    "biome_whitelist": "minecraft:is_overworld",
+    "level_range": {
+      "max": 2147483647,
+      "min": 0
+    },
+    "nearby_biomes": "minecraft:is_overworld",
+    "spawn_distance": {
+      "max": 2147483647,
+      "min": 0
+    },
+    "weight": 1,
+    "whitelist": true
+  },
+  "attempts": 1,
+  "compact_desc": [
+    "{\"color\":\"dark_gray\",\"text\":\"Chop down some trees\"}"
+  ],
+  "compact_name": "{\"color\":\"red\",\"text\":\"Chop wood\"}",
+  "criteria": {
+    "deliveries": [
+      {
+        "ingredient": {
+          "tag": "minecraft:logs"
+        },
+        "required": 8
+      }
+    ]
+  },
+  "desc": [
+    "{\"color\":\"dark_gray\",\"text\":\"Chop down some trees\"}"
+  ],
+  "difficulty": 1,
+  "failure_criteria": {
+    "death": false,
+    "timer": -1
+  },
+  "icon": {
+    "Count": 1,
+    "id": "minecraft:oak_log"
+  },
+  "level_up": false,
+  "multiplayer_type": "solo",
+  "name": "{\"color\":\"red\",\"text\":\"Chop wood\"}",
+  "rewards": {
+    "add_effects": [
+      {
+        "Ambient": false,
+        "Amplifier": 0,
+        "Duration": 600,
+        "ShowIcon": true,
+        "ShowParticles": true,
+        "forge:id": "minecraft:regeneration"
+      }
+    ],
+    "campfire_experience": 100,
+    "player_experience": 100
+  },
+  "slots": 1,
+  "weight": 1
+}

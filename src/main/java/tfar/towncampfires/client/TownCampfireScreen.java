@@ -14,6 +14,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.gui.widget.ExtendedButton;
 import net.minecraftforge.common.UsernameCache;
 import org.lwjgl.glfw.GLFW;
@@ -24,6 +25,7 @@ import tfar.towncampfires.data.CampfireEffect;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestCriteria;
 import tfar.towncampfires.data.quest.QuestInstance;
+import tfar.towncampfires.data.quest.criteria.Delivery;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
@@ -77,6 +79,7 @@ public class TownCampfireScreen extends BasicScreen {
 
     protected Button questTabSwitch;
     protected Button info;
+    protected Button deliver;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -122,6 +125,9 @@ public class TownCampfireScreen extends BasicScreen {
 
         info = new Button(leftPos + imageWidth/2+80,topPos+imageHeight - 25,50,20,Component.literal("Info"),b -> moreInfo());
         addRenderableWidget(info);
+
+        deliver = new Button(leftPos + imageWidth/2+80,topPos+imageHeight - 25-25,50,20,Component.literal("Deliver"),b -> deliver());
+        addRenderableWidget(deliver);
 
 
         initEditBox();
@@ -202,6 +208,7 @@ public class TownCampfireScreen extends BasicScreen {
             ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(TownCampfiresClient.clientLookup(selected.questInstance.quest()),
                     townCampfire.location(), C2STownCampfireQuestPacket.Type.FINISH));
             finishQuest.active = false;
+            deliver.active = false;
         }
     }
 
@@ -218,6 +225,14 @@ public class TownCampfireScreen extends BasicScreen {
         }
         if (quest != null) {
             Minecraft.getInstance().pushGuiLayer(new QuestInfoScreen(quest.name(),this,quest));
+        }
+    }
+
+    void deliver(){
+        ActiveQuestWidget.ActiveQuestEntry selected = activeQuestWidget.getSelected();
+        if (selected != null) {
+            ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(TownCampfiresClient.clientLookup(selected.questInstance.quest()),
+                    townCampfire.location(), C2STownCampfireQuestPacket.Type.DELIVER));
         }
     }
 
@@ -328,13 +343,17 @@ public class TownCampfireScreen extends BasicScreen {
 
                             font.draw(pPoseStack, quest.compactName(),xStart+20,yStart,0xffffff);
 
+                            int yLine = yStart+18;
+
                             List<FormattedCharSequence> seq = quest.compactDesc().stream().map(Component::getVisualOrderText).toList();
-                            for (int i = 0; i < seq.size();i++) {
-                                FormattedCharSequence formattedCharSequence = seq.get(i);
-                                font.draw(pPoseStack,formattedCharSequence,xStart + 1,yStart + 18 + spacing * i,0xffffff);
+                            for (FormattedCharSequence formattedCharSequence : seq) {
+                                font.draw(pPoseStack, formattedCharSequence, xStart + 1, yLine, 0xffffff);
+                                yLine += spacing;
                             }
-                            int completeY = 90;
-                            font.draw(pPoseStack,Component.literal("Progress"),xStart,yStart+completeY,DARK_GRAY);
+                            font.draw(pPoseStack,Component.literal("Progress"),xStart,yLine,DARK_GRAY);
+                            yLine+=spacing;
+
+
                             List<QuestCriteria<?>> criterias = questInstance.quest().successCriteria().custom();
                             for (int i = 0; i < criterias.size(); i++) {
                                 QuestCriteria<?> entry = criterias.get(i);
@@ -342,20 +361,43 @@ public class TownCampfireScreen extends BasicScreen {
 
                                 int progress = questInstance.customProgress().isEmpty() ? 0 : questInstance.customProgress().get(i);
 
-                                font.draw(pPoseStack, entry.desc().copy().append(" "+progress+"/"+count),xStart,yStart + completeY +spacing +  spacing * i,0xffffff);
+                                font.draw(pPoseStack, entry.desc().copy().append(" "+progress+"/"+count),xStart,yLine,0xffffff);
+                                yLine+=spacing;
                             }
 
-                            int yLine = yStart + 110 + questInstance.quest().successCriteria().custom().size() * spacing;
+
+
+                            List<Delivery> deliveries = quest.successCriteria().deliveries();
+                            for (int i = 0; i < deliveries.size(); i++) {
+                                Delivery entry = deliveries.get(i);
+                                int x0 = xStart+40;
+                                int x1 = x0+18;
+                                int y0 = yLine;
+                                int y1 = y0+18;
+                                font.draw(pPoseStack,Component.literal("Deliver"),xStart,y0+3,DARK_GRAY);
+                                ItemStack stack = entry.ingredient().getItems()[0].copy();
+                                stack.setCount(entry.required());
+                                minecraft.getItemRenderer().renderGuiItem(stack,x0,y0);
+                                minecraft.getItemRenderer().renderGuiItemDecorations(font,stack,x0,y0,questInstance.deliveryProgress().get(i)+"/"+entry.required());
+                                if (pMouseX > x0 && pMouseY > y0 && pMouseX < x1 && pMouseY < y1) {
+                                    renderTooltip(pPoseStack,stack,pMouseX,pMouseY);
+                                }
+                                yLine+=18;
+                            }
+
 
                             font.draw(pPoseStack,Component.literal("Members"),xStart,yLine,DARK_GRAY);
 
                             yLine+=spacing;
 
+                            StringBuilder allMembers = new StringBuilder();
+
+
                             for (UUID uuid: questInstance.getMembers()) {
                                 String name = UsernameCache.getLastKnownUsername(uuid);
-                                font.draw(pPoseStack,name,xStart,yLine,DARK_GRAY);
-                                yLine+= spacing;
+                                allMembers.append(name).append(",");
                             }
+                            font.draw(pPoseStack, allMembers.toString(),xStart,yLine,DARK_GRAY);
                         }
                     }
 
@@ -395,6 +437,23 @@ public class TownCampfireScreen extends BasicScreen {
                                 QuestCriteria<?> entry = criterias.get(i);
                                 int count = entry.count();
                                 font.draw(pPoseStack, entry.desc().copy().append(" "+count),xStart,yStart + completeY +10 +  10 * i,0xffffff);
+                            }
+
+                            List<Delivery> deliveries = quest.successCriteria().deliveries();
+                            for (int i = 0; i < deliveries.size(); i++) {
+                                Delivery entry = deliveries.get(i);
+                                int x0 = xStart+40;
+                                int x1 = x0+18;
+                                int y0 = yStart + completeY + 12 + 18 * i;
+                                int y1 = y0+18;
+                                font.draw(pPoseStack,Component.literal("Deliver"),xStart,y0,DARK_GRAY);
+                                ItemStack stack = entry.ingredient().getItems()[0].copy();
+                                stack.setCount(entry.required());
+                                minecraft.getItemRenderer().renderGuiItem(stack,x0,y0);
+                                minecraft.getItemRenderer().renderGuiItemDecorations(font,stack,x0,y0);
+                                if (pMouseX > x0 && pMouseY > y0 && pMouseX < x1 && pMouseY < y1) {
+                                    renderTooltip(pPoseStack,stack,pMouseX,pMouseY);
+                                }
                             }
                         }
                     }
@@ -489,8 +548,11 @@ public class TownCampfireScreen extends BasicScreen {
 
         updateStartQuest(visible);
 
-        finishQuest.visible = visible && questTab==QuestTab.current && activeQuestWidget.getSelected() != null;
-        info.visible = visible && (questTab==QuestTab.current && (questWidget.getSelected() != null||activeQuestWidget.getSelected() != null));
+        ActiveQuestWidget.ActiveQuestEntry e = activeQuestWidget.getSelected();
+
+        finishQuest.visible = visible && questTab==QuestTab.current && e != null;
+        info.visible = visible && (questTab==QuestTab.current && (questWidget.getSelected() != null||e != null));
+        deliver.visible = visible && questTab == QuestTab.available && e != null && !e.questInstance.quest().successCriteria().deliveries().isEmpty();
     }
 
     protected void updateStartQuest(boolean visible) {
@@ -847,6 +909,7 @@ public class TownCampfireScreen extends BasicScreen {
                         finishQuest.visible = true;
                         info.visible = true;
                         finishQuest.active = status == QuestInstance.Status.COMPLETE;
+                        deliver.visible = true;
                     }
                 }
             }

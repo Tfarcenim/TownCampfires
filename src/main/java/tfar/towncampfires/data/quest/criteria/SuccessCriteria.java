@@ -26,7 +26,7 @@ public record SuccessCriteria(List<QuestCriteria<?>> custom,List<Delivery> deliv
         }
 
         List<Delivery> deliveries1 = new ArrayList<>();
-        JsonArray deliveryCriteria = GsonHelper.getAsJsonArray(jsonObject,"delivery",new JsonArray());
+        JsonArray deliveryCriteria = GsonHelper.getAsJsonArray(jsonObject,"deliveries",new JsonArray());
         for (JsonElement element : deliveryCriteria) {
             JsonObject o = element.getAsJsonObject();
             Delivery delivery = Delivery.fromJson(o);

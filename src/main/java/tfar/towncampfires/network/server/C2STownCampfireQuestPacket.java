@@ -34,6 +34,7 @@ public class C2STownCampfireQuestPacket implements C2SModPacket {
             switch (type) {
                 case START -> campfireLevelData.startOrPrepQuest(player, questID, townCampfire);
                 case FINISH -> campfireLevelData.finishQuest(player,questID,townCampfire);
+                case DELIVER -> campfireLevelData.tryDeliver(player,questID,townCampfire);
             }
 
         } else {
@@ -49,6 +50,6 @@ public class C2STownCampfireQuestPacket implements C2SModPacket {
     }
 
     public enum Type {
-        START, FINISH;
+        START, FINISH,DELIVER;
     }
 }
