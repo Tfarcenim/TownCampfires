@@ -50,11 +50,11 @@ public class TownCampfireScreen extends BasicScreen {
         this.townCampfire = townCampfire;
         name.setValue(townCampfire.name().getString());
         campfireEffectWidget.refreshList();
-        questWidget.refreshList();
-
+        updateQuests();
     }
 
     public void updateQuests() {
+        questWidget.refreshList();
         activeQuestWidget.refreshList();
     }
 
@@ -929,10 +929,17 @@ public class TownCampfireScreen extends BasicScreen {
             this.visible = visible;
         }
 
+        QuestInstance temp;
+
         public void refreshList() {
+            temp = getSelected() != null ? getSelected().questInstance : null;
             this.clearEntries();
             for (QuestInstance questInstance : TownCampfiresClient.currentQuests){
-                addEntry(new ActiveQuestEntry(questInstance));
+                ActiveQuestEntry questEntry = new ActiveQuestEntry(questInstance);
+                addEntry(questEntry);
+                if (temp != null && questInstance.questID().equals(temp.questID())) {
+                    setSelected(questEntry);
+                }
             }
         }
 
