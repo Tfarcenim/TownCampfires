@@ -21,12 +21,10 @@
   "criteria": {
     "custom": [
       {
+        "conditions": {},
         "count": 2,
-        "trigger": {
-          "conditions": {},
-          "desc": "{\"color\":\"dark_gray\",\"text\":\"Kill Mobs\"}",
-          "trigger": "minecraft:player_killed_entity"
-        }
+        "desc": "{\"color\":\"dark_gray\",\"text\":\"Kill Mobs\"}",
+        "trigger": "minecraft:player_killed_entity"
       }
     ]
   },

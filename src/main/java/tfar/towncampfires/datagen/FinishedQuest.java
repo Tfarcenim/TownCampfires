@@ -1,7 +1,6 @@
 package tfar.towncampfires.datagen;
 
 import com.google.gson.JsonObject;
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.commands.CommandFunction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -110,12 +109,8 @@ public class FinishedQuest {
         }
 
         public Builder addFailureCriteria(QuestCriteria<?> criteria) {
-            return addFailureCriteria(criteria,1);
-        }
 
-        public Builder addFailureCriteria(QuestCriteria<?> criteria,int count) {
-
-            this.failureCriteria.custom().add(Pair.of(criteria,count));
+            this.failureCriteria.custom().add(criteria);
             return this;
         }
 

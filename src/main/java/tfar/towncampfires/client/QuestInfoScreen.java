@@ -1,7 +1,6 @@
 package tfar.towncampfires.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FormattedCharSequence;
 import tfar.towncampfires.data.quest.Quest;
@@ -74,24 +73,21 @@ public class QuestInfoScreen extends BasicScreen {
         }
         font.draw(pPoseStack, Component.literal("Complete Conditions"), xStart, yLine, TownCampfireScreen.DARK_GRAY);
         yLine += spacing;
-        List<Pair<QuestCriteria<?>, Integer>> criterias = quest.successCriteria().custom();
+        List<QuestCriteria<?>> criterias = quest.successCriteria().custom();
         for (int i = 0; i < criterias.size(); i++) {
-            Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
-            QuestCriteria<?> criteria = entry.getFirst();
-            int count = entry.getSecond();
-            font.draw(pPoseStack, criteria.desc().copy().append(" " + count), xStart, yLine, 0xffffff);
+            QuestCriteria<?> questCriteria = criterias.get(i);
+            font.draw(pPoseStack, questCriteria.desc().copy().append(" " + questCriteria.count()), xStart, yLine, 0xffffff);
             yLine += spacing;
         }
 
         font.draw(pPoseStack, Component.literal("Fail Conditions"), xStart, yLine, TownCampfireScreen.DARK_GRAY);
         yLine += spacing;
 
-        List<Pair<QuestCriteria<?>, Integer>> failCriterias = quest.failureCriteria().custom();
+        List<QuestCriteria<?>> failCriterias = quest.failureCriteria().custom();
         for (int i = 0; i < failCriterias.size(); i++) {
-            Pair<QuestCriteria<?>, Integer> entry = failCriterias.get(i);
-            QuestCriteria<?> criteria = entry.getFirst();
-            int count = entry.getSecond();
-            font.draw(pPoseStack, criteria.desc().copy().append(count > 1 ? " " + count : ""), xStart, yLine, 0xffffff);
+            QuestCriteria<?> entry = failCriterias.get(i);
+            int count = entry.count();
+            font.draw(pPoseStack, entry.desc().copy().append(count > 1 ? " " + count : ""), xStart, yLine, 0xffffff);
             yLine += spacing;
         }
     }

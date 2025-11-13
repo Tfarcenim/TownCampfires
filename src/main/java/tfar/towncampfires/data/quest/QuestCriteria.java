@@ -22,15 +22,17 @@ public class QuestCriteria<T extends CriterionTriggerInstance> {
     private final CriterionTrigger<T> trigger;
     private final T triggerInstance;
     private final Component desc;
+    private final int count;
 
-    public QuestCriteria(CriterionTrigger<T> trigger, T triggerInstance, Component desc) {
+    public QuestCriteria(CriterionTrigger<T> trigger, T triggerInstance, Component desc,int count) {
         this.trigger = trigger;
         this.triggerInstance = triggerInstance;
         this.desc = desc;
+        this.count = count;
     }
 
-    public QuestCriteria(Component desc) {
-        this(null,null, desc);
+    public QuestCriteria(Component desc,int count) {
+        this(null,null, desc,count);
     }
 
     public T triggerInstance() {
@@ -45,25 +47,32 @@ public class QuestCriteria<T extends CriterionTriggerInstance> {
         return desc;
     }
 
+    public int count() {
+        return count;
+    }
+
     public void serializeToNetwork(FriendlyByteBuf pBuffer) {
         pBuffer.writeComponent(desc);
+        pBuffer.writeInt(count);
     }
 
     public static QuestCriteria<?> criterionFromJson(JsonObject pJson, DeserializationContext pContext) {
         ResourceLocation resourcelocation = new ResourceLocation(GsonHelper.getAsString(pJson, "trigger"));
         CriterionTrigger<?> criteriontrigger = CriteriaTriggers.getCriterion(resourcelocation);
         Component component = Component.Serializer.fromJson(pJson.get("desc").getAsString());
+        int count = GsonHelper.getAsInt(pJson,"count",1);
         if (criteriontrigger == null) {
             throw new JsonSyntaxException("Invalid criterion trigger: " + resourcelocation);
         } else {
             CriterionTriggerInstance criteriontriggerinstance = criteriontrigger.createInstance(GsonHelper.getAsJsonObject(pJson, "conditions", new JsonObject()), pContext);
-            return new QuestCriteria(criteriontrigger,criteriontriggerinstance,component);
+            return new QuestCriteria(criteriontrigger,criteriontriggerinstance,component,count);
         }
     }
 
     public static QuestCriteria<?> criterionFromNetwork(FriendlyByteBuf buf) {
         Component desc = buf.readComponent();
-        return new QuestCriteria<>(desc);
+        int count = buf.readInt();
+        return new QuestCriteria<>(desc,count);
     }
 
     public static Map<String, QuestCriteria<?>> criteriaFromJson(JsonObject pJson, DeserializationContext pContext) {
@@ -98,6 +107,7 @@ public class QuestCriteria<T extends CriterionTriggerInstance> {
             }
 
             jsonobject.addProperty("desc",Component.Serializer.toJson(desc));
+            jsonobject.addProperty("count",count);
 
             return jsonobject;
         }

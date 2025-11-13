@@ -1,6 +1,5 @@
 package tfar.towncampfires.client;
 
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
@@ -112,10 +111,10 @@ public class TownCampfiresClient {
 
             font.draw(poseStack,quest.name().copy().append(questInstance.status() == QuestInstance.Status.PREP ? " (Prep)":""),5,startY+i * 20,0xffffff);
             for (int j = 0; j < quest.successCriteria().custom().size(); j++) {
-                Pair<QuestCriteria<?>, Integer> questCriteriaIntegerPair = quest.successCriteria().custom().get(j);
-                int needed= questCriteriaIntegerPair.getSecond();
+                QuestCriteria<?> questCriteria = quest.successCriteria().custom().get(j);
+                int needed= questCriteria.count();
                 Integer progress = questInstance.customProgress().isEmpty() ? 0 : questInstance.customProgress().get(j);
-                font.draw(poseStack,questCriteriaIntegerPair.getFirst().desc().copy().append(" "+progress+"/"+needed),5, startY + i * 20 + 10, 0xffffff);
+                font.draw(poseStack,questCriteria.desc().copy().append(" "+progress+"/"+needed),5, startY + i * 20 + 10, 0xffffff);
             }
         }
     };

@@ -2,7 +2,6 @@ package tfar.towncampfires.client;
 
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiComponent;
@@ -336,15 +335,14 @@ public class TownCampfireScreen extends BasicScreen {
                             }
                             int completeY = 90;
                             font.draw(pPoseStack,Component.literal("Progress"),xStart,yStart+completeY,DARK_GRAY);
-                            List<Pair<QuestCriteria<?>, Integer>> criterias = questInstance.quest().successCriteria().custom();
+                            List<QuestCriteria<?>> criterias = questInstance.quest().successCriteria().custom();
                             for (int i = 0; i < criterias.size(); i++) {
-                                Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
-                                QuestCriteria<?> criteria = entry.getFirst();
-                                int count = entry.getSecond();
+                                QuestCriteria<?> entry = criterias.get(i);
+                                int count = entry.count();
 
                                 int progress = questInstance.customProgress().isEmpty() ? 0 : questInstance.customProgress().get(i);
 
-                                font.draw(pPoseStack,criteria.desc().copy().append(" "+progress+"/"+count),xStart,yStart + completeY +spacing +  spacing * i,0xffffff);
+                                font.draw(pPoseStack, entry.desc().copy().append(" "+progress+"/"+count),xStart,yStart + completeY +spacing +  spacing * i,0xffffff);
                             }
 
                             int yLine = yStart + 110 + questInstance.quest().successCriteria().custom().size() * spacing;
@@ -392,12 +390,11 @@ public class TownCampfireScreen extends BasicScreen {
                             Component xp = Component.literal("XP:"+quest.rewards().campfireExperience());
                             font.draw(pPoseStack,xp,xStart+imageWidth/2 - 4 - font.width(xp),yStart+completeY+12*3,DARK_GRAY);
 
-                            List<Pair<QuestCriteria<?>, Integer>> criterias = quest.successCriteria().custom();
+                            List<QuestCriteria<?>> criterias = quest.successCriteria().custom();
                             for (int i = 0; i < criterias.size(); i++) {
-                                Pair<QuestCriteria<?>, Integer> entry = criterias.get(i);
-                                QuestCriteria<?> criteria = entry.getFirst();
-                                int count = entry.getSecond();
-                                font.draw(pPoseStack,criteria.desc().copy().append(" "+count),xStart,yStart + completeY +10 +  10 * i,0xffffff);
+                                QuestCriteria<?> entry = criterias.get(i);
+                                int count = entry.count();
+                                font.draw(pPoseStack, entry.desc().copy().append(" "+count),xStart,yStart + completeY +10 +  10 * i,0xffffff);
                             }
                         }
                     }

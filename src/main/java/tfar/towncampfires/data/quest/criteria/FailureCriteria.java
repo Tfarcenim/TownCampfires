@@ -3,7 +3,6 @@ package tfar.towncampfires.data.quest.criteria;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.advancements.critereon.DeserializationContext;
 import net.minecraft.core.Registry;
 import net.minecraft.network.FriendlyByteBuf;
@@ -23,7 +22,7 @@ import java.util.List;
 // Recieving Buff/Debuff: if this buff/debuff is acquired the quest is considered failed.
 // Game Stage: Recieving this gamestage results in a failed quest.
 // Village Return: Returning to any campfire results in this quest being failed.
-public record FailureCriteria(List<Pair<QuestCriteria<?>, Integer>> custom, boolean death, long timer, List<MobEffect> forbiddenBuffs,List<String> forbiddenStages) {
+public record FailureCriteria(List<QuestCriteria<?>> custom, boolean death, long timer, List<MobEffect> forbiddenBuffs,List<String> forbiddenStages) {
 
 
     public static final FailureCriteria EMPTY = new FailureCriteria(new ArrayList<>(),false,-1,List.of(),List.of());
@@ -54,7 +53,7 @@ public record FailureCriteria(List<Pair<QuestCriteria<?>, Integer>> custom, bool
     public static FailureCriteria deserialize(JsonObject jsonObject, DeserializationContext context) {
         JsonArray customCriteria = GsonHelper.getAsJsonArray(jsonObject, "custom", new JsonArray());
 
-        List<Pair<QuestCriteria<?>, Integer>> criterias = Quest.readCriteria(customCriteria,context);
+        List<QuestCriteria<?>> criterias = Quest.readCriteria(customCriteria,context);
 
         boolean death = GsonHelper.getAsBoolean(jsonObject,"death",false);
         long timer = GsonHelper.getAsLong(jsonObject,"timer",-1);
@@ -75,16 +74,13 @@ public record FailureCriteria(List<Pair<QuestCriteria<?>, Integer>> custom, bool
     }
 
     public void serializeToNetwork(FriendlyByteBuf buffer) {
-        buffer.writeCollection(custom, (buf1, questCriteriaIntegerPair) -> {
-            questCriteriaIntegerPair.getFirst().serializeToNetwork(buf1);
-            buf1.writeInt(questCriteriaIntegerPair.getSecond());
-        });
+        buffer.writeCollection(custom, (buf1, questCriteria) -> questCriteria.serializeToNetwork(buf1));
         buffer.writeBoolean(death);
         buffer.writeLong(timer);
     }
 
     public static FailureCriteria fromNetwork(FriendlyByteBuf pBuffer) {
-        List<Pair<QuestCriteria<?>, Integer>> pairs = pBuffer.readList(buf1 -> Pair.of(QuestCriteria.criterionFromNetwork(buf1), buf1.readInt()));
+        List<QuestCriteria<?>> pairs = pBuffer.readList(QuestCriteria::criterionFromNetwork);
         boolean death = pBuffer.readBoolean();
         long timer = pBuffer.readLong();
         return new FailureCriteria(pairs, death,timer,List.of(),List.of());

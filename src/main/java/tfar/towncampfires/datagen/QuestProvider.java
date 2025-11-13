@@ -2,7 +2,6 @@ package tfar.towncampfires.datagen;
 
 import com.google.common.collect.Sets;
 import com.google.gson.JsonObject;
-import com.mojang.datafixers.util.Pair;
 import com.mojang.logging.LogUtils;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.CriteriaTriggers;
@@ -63,9 +62,8 @@ public class QuestProvider implements DataProvider {
         
         int count = 2;
 
-        List<Pair<QuestCriteria<?>, Integer>> successCriteria = List.of(
-                        Pair.of(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(),
-                                Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY)),count));
+        List<QuestCriteria<?>> successCriteria = List.of(new QuestCriteria<>(CriteriaTriggers.PLAYER_KILLED_ENTITY, KilledTrigger.TriggerInstance.playerKilledEntity(),
+                                Component.literal("Kill Mobs").withStyle(ChatFormatting.DARK_GRAY),count));
 
         FinishedQuest.builder().name(Component.literal("Kill Mobs").withStyle(ChatFormatting.RED))
                 .desc(Component.literal("Kill any 2 mobs").withStyle(ChatFormatting.DARK_GRAY))
@@ -78,9 +76,8 @@ public class QuestProvider implements DataProvider {
                                 new String[]{"Failed Kill Mobs"},new String[]{"Kill Mobs"}, List.of(new MobEffectInstance(MobEffects.POISON,600)),List.of()))
                 .save(consumer, TownCampfires.id("kill_mobs"));
 
-        List<Pair<QuestCriteria<?>, Integer>> placeCriteria = List.of(
-                Pair.of(new QuestCriteria<>(CriteriaTriggers.PLACED_BLOCK, PlacedBlockTrigger.TriggerInstance.placedBlock(Blocks.OAK_FENCE),
-                        Component.literal("Place oak fences").withStyle(ChatFormatting.DARK_GRAY)),3));
+        List<QuestCriteria<?>> placeCriteria = List.of(new QuestCriteria<>(CriteriaTriggers.PLACED_BLOCK, PlacedBlockTrigger.TriggerInstance.placedBlock(Blocks.OAK_FENCE),
+                        Component.literal("Place oak fences").withStyle(ChatFormatting.DARK_GRAY),3));
 
         FinishedQuest.builder().name(Component.literal("Place fence").withStyle(ChatFormatting.RED))
                 .desc(Component.literal("Place some oak fences").withStyle(ChatFormatting.DARK_GRAY))

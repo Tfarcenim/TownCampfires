@@ -21,14 +21,12 @@
   "criteria": {
     "custom": [
       {
+        "conditions": {
+          "block": "minecraft:oak_fence"
+        },
         "count": 3,
-        "trigger": {
-          "conditions": {
-            "block": "minecraft:oak_fence"
-          },
-          "desc": "{\"color\":\"dark_gray\",\"text\":\"Place oak fences\"}",
-          "trigger": "minecraft:placed_block"
-        }
+        "desc": "{\"color\":\"dark_gray\",\"text\":\"Place oak fences\"}",
+        "trigger": "minecraft:placed_block"
       }
     ]
   },

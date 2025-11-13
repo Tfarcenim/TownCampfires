@@ -219,11 +219,10 @@ public class QuestInstance {
         var criterias = quest.failureCriteria().custom();
         int criteriaCount = criterias.size();
         for (int i = 0 ; i <criteriaCount;i++) {
-            Pair<QuestCriteria<?>, Integer> pair = criterias.get(i);
-            QuestCriteria<?> questCriteria = pair.getFirst();
-            CriterionTriggerInstance o = questCriteria.triggerInstance();
+            QuestCriteria<?> pair = criterias.get(i);
+            CriterionTriggerInstance o = pair.triggerInstance();
 
-            if (questCriteria.trigger() == trigger) {
+            if (pair.trigger() == trigger) {
                 if (pTestTrigger.test((T) o)) {
                     List<Integer> failureProgress = progress.get(CriteriaType.FAILURE);
                     if (failureProgress().isEmpty()) {
@@ -244,8 +243,7 @@ public class QuestInstance {
         var criterias = quest.successCriteria().custom();
         int criteriaCount = criterias.size();
         for (int i = 0 ; i <criteriaCount;i++) {
-            Pair<QuestCriteria<?>, Integer> pair = criterias.get(i);
-            QuestCriteria<?> questCriteria = pair.getFirst();
+            QuestCriteria<?> questCriteria = criterias.get(i);
             CriterionTriggerInstance o = questCriteria.triggerInstance();
 
             if (questCriteria.trigger() == trigger) {
@@ -264,11 +262,11 @@ public class QuestInstance {
 
     public void updateStatus() {
 
-        List<Pair<QuestCriteria<?>, Integer>> failCriterias = quest().failureCriteria().custom();
+        List<QuestCriteria<?>> failCriterias = quest().failureCriteria().custom();
         for (int i = 0; i < failCriterias.size(); i++) {
-            Pair<QuestCriteria<?>, Integer> criteria = failCriterias.get(i);
+            QuestCriteria<?> criteria = failCriterias.get(i);
             int progress = customProgress().isEmpty() || customProgress().size() <= i ? 0 : customProgress().get(i);
-            int required = criteria.getSecond();
+            int required = criteria.count();
             if (progress >= required) {
                 status = Status.FAILED;
                 return;
@@ -276,11 +274,11 @@ public class QuestInstance {
         }
 
         boolean complete = true;
-        List<Pair<QuestCriteria<?>, Integer>> criterias = quest().successCriteria().custom();
+        List<QuestCriteria<?>> criterias = quest().successCriteria().custom();
         for (int i = 0; i < criterias.size(); i++) {
-            Pair<QuestCriteria<?>, Integer> criteria = criterias.get(i);
+            QuestCriteria<?> criteria = criterias.get(i);
             int progress = customProgress().isEmpty() || customProgress().size() <= i ? 0 : customProgress().get(i);
-            int required = criteria.getSecond();
+            int required = criteria.count();
             if (progress < required) {
                 complete = false;
                 break;

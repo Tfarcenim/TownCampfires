@@ -3,7 +3,6 @@ package tfar.towncampfires.data.quest;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.datafixers.util.Pair;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.JsonOps;
 import net.minecraft.advancements.critereon.DeserializationContext;
@@ -129,25 +128,20 @@ public record Quest(Component name, ItemStack icon, List<Component> desc,
                 .resultOrPartial(TownCampfires.LOGGER::error).orElseThrow().getFirst();
     }
 
-    public static List<Pair<QuestCriteria<?>, Integer>> readCriteria(JsonArray jsonArray, DeserializationContext context) {
-        List<Pair<QuestCriteria<?>, Integer>> criterias = new ArrayList<>(jsonArray.size());
-
+    public static List<QuestCriteria<?>> readCriteria(JsonArray jsonArray, DeserializationContext context) {
+        List<QuestCriteria<?>> criterias = new ArrayList<>(jsonArray.size());
         for (JsonElement element : jsonArray) {
             JsonObject o = element.getAsJsonObject();
             QuestCriteria<?> questCriteria = QuestCriteria.criterionFromJson(o.get("trigger").getAsJsonObject(), context);
-            int count = GsonHelper.getAsInt(o, "count", 1);
-            criterias.add(Pair.of(questCriteria, count));
+            criterias.add(questCriteria);
         }
         return criterias;
     }
 
-    public static JsonArray serializeCriteria(List<Pair<QuestCriteria<?>, Integer>> criterias) {
+    public static JsonArray serializeCriteria(List<QuestCriteria<?>> criterias) {
         JsonArray jsonArray = new JsonArray(criterias.size());
-        for (Pair<QuestCriteria<?>, Integer> criteria : criterias) {
-            JsonObject o = new JsonObject();
-            o.add("trigger", criteria.getFirst().serializeToJson());
-            o.addProperty("count", criteria.getSecond());
-            jsonArray.add(o);
+        for (QuestCriteria<?> criteria : criterias) {
+            jsonArray.add(criteria.serializeToJson());
         }
         return jsonArray;
     }
