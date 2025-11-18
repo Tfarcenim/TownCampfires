@@ -2,12 +2,15 @@ package tfar.towncampfires.network.server;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import tfar.towncampfires.CampfireLevelData;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
+import tfar.towncampfires.compat.LoadedMods;
+import tfar.towncampfires.compat.TradingPostCompat;
 
 import java.util.Optional;
 
@@ -42,6 +45,13 @@ public class C2STownCampfireButtonPacket implements C2SModPacket {
                         }
                     }));
                 }
+                case TRADE -> {
+                    if (LoadedMods.tradingpost.loaded) {
+                        TradingPostCompat.openTradingPost(player,player.getLevel(),pos,townCampfire);
+                    } else {
+                        player.displayClientMessage(Component.literal("Install Trading Post to use this tab"),false);
+                    }
+                }
             }
         } else {
             TownCampfires.LOGGER.warn("Player {} attempted to access nonexistent campfire at {}",player,pos);
@@ -55,7 +65,7 @@ public class C2STownCampfireButtonPacket implements C2SModPacket {
     }
 
     public enum CampfireButton {
-        SPAWN,BED
+        SPAWN,BED,TRADE
     }
 
 }

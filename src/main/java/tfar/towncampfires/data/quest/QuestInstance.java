@@ -101,7 +101,7 @@ public class QuestInstance {
     }
 
     public List<Integer> customProgress() {
-        return progress.computeIfAbsent(CriteriaType.CUSTOM,criteriaType -> new ArrayList<>());
+        return progress.computeIfAbsent(CriteriaType.CUSTOM,criteriaType -> NonNullList.withSize(quest().successCriteria().custom().size(),0));
     }
 
     public List<Integer> deliveryProgress() {
@@ -109,7 +109,7 @@ public class QuestInstance {
     }
 
     public List<Integer> failureProgress() {
-        return progress.computeIfAbsent(CriteriaType.FAILURE,criteriaType -> new ArrayList<>());
+        return progress.computeIfAbsent(CriteriaType.FAILURE,criteriaType -> NonNullList.withSize(quest().failureCriteria().custom().size(),0));
     }
 
 
@@ -256,7 +256,7 @@ public class QuestInstance {
 
             if (questCriteria.trigger() == trigger) {
                 if (pTestTrigger.test((T) o)) {
-                    List<Integer> customProgress = progress.get(CriteriaType.CUSTOM);
+                    List<Integer> customProgress = customProgress();
                     if (customProgress.isEmpty()) {
                         customProgress = NonNullList.withSize(criteriaCount,0);
                     }

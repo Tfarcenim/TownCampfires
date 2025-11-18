@@ -3,6 +3,6 @@ package tfar.towncampfires.compat;
 import net.minecraftforge.fml.ModList;
 
 public enum LoadedMods {
-    gamestages;
+    gamestages,tradingpost;
     public final boolean loaded = ModList.get().isLoaded(name());
 }

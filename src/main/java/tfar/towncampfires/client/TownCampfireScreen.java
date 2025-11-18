@@ -537,6 +537,9 @@ public class TownCampfireScreen extends BasicScreen {
          questTabSwitch.visible = tab == Tab.quest;
 
          handleQuestTabs(current == Tab.quest);
+         if (tab == Tab.trades) {
+             ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.TRADE,townCampfire.location()));
+         }
     }
 
 

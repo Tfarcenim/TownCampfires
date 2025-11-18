@@ -43,6 +43,7 @@ public class TownCampfireConfig {
         public final ForgeConfigSpec.ConfigValue<List<? extends Integer>> levelup_walls;
 
         public final ForgeConfigSpec.IntValue slots_per_player;
+        public final ForgeConfigSpec.IntValue trade_tab_level_requirement;
 
         public Server(ForgeConfigSpec.Builder builder) {
             builder.push("town_campfire_stats");
@@ -72,6 +73,8 @@ public class TownCampfireConfig {
                     List.of(new RandomIntegerRange(0,0,0)));
 
             starting_quests = ConfigHelper.defineObject(builder,"starting_quests",IntegerRange.CODEC,new IntegerRange(1,5));
+
+            trade_tab_level_requirement = builder.defineInRange("trade_tab_level_requirement",0,0,10000000);
 
             builder.pop();
             builder.pop();

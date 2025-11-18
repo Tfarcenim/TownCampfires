@@ -191,6 +191,9 @@ dependencies {
 
     implementation fg.deobf("net.darkhax.gamestages:GameStages-Forge-${mc_version}:${gamestages_version}")
     implementation fg.deobf("net.darkhax.bookshelf:Bookshelf-Forge-${mc_version}:${bookshelf_version}")
+
+    implementation fg.deobf("curse.maven:trading-post-539057:3945828")
+    implementation fg.deobf("curse.maven:puzzles-lib-495476:4600775")
     // For more info...
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
