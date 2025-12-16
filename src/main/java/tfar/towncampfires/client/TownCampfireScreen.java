@@ -1,7 +1,9 @@
 package tfar.towncampfires.client;
 
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiComponent;
@@ -10,6 +12,7 @@ import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.components.ImageButton;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.renderer.GameRenderer;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FormattedCharSequence;
@@ -17,6 +20,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.client.gui.widget.ExtendedButton;
 import net.minecraftforge.common.UsernameCache;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
@@ -28,12 +32,16 @@ import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.data.quest.criteria.Delivery;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.server.C2SSetTownCampfireNamePacket;
+import tfar.towncampfires.network.server.C2STeleportPacket;
 import tfar.towncampfires.network.server.C2STownCampfireButtonPacket;
 import tfar.towncampfires.network.server.C2STownCampfireQuestPacket;
 import tfar.towncampfires.utils.TextComponents;
 import tfar.towncampfires.utils.Utils;
 
-import javax.annotation.Nullable;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.text.DecimalFormat;
 import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -41,10 +49,18 @@ import java.util.function.Function;
 public class TownCampfireScreen extends BasicScreen {
 
     protected EditBox name;
+    protected EditBox teleportSearch;
     @Nullable
     private List<FormattedCharSequence> toolTip;
 
-    private TownCampfire townCampfire;
+    protected TownCampfire townCampfire;
+
+    List<TownCampfire> teleports = new ArrayList<>();
+
+    public void setTeleports(List<TownCampfire> campfires) {
+        teleports = campfires;
+        teleportWidget.refresh();
+    }
 
     public void setCampfire(TownCampfire townCampfire) {
         this.townCampfire = townCampfire;
@@ -59,7 +75,7 @@ public class TownCampfireScreen extends BasicScreen {
     }
 
     public enum Tab {
-        status,quest,trades,teleport,logs
+        status, quest, trades, teleport, logs
     }
 
     protected static final int TAB_HEIGHT = 20;
@@ -72,6 +88,7 @@ public class TownCampfireScreen extends BasicScreen {
     protected CampfireEffectWidget campfireEffectWidget;
     protected QuestWidget questWidget;
     protected ActiveQuestWidget activeQuestWidget;
+    protected TeleportWidget teleportWidget;
 
     protected Button startQuest;
 
@@ -80,6 +97,8 @@ public class TownCampfireScreen extends BasicScreen {
     protected Button questTabSwitch;
     protected Button info;
     protected Button deliver;
+
+    protected Button teleport;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -93,40 +112,47 @@ public class TownCampfireScreen extends BasicScreen {
         for (int i = 0; i < values.length; i++) {
             Tab tab = values[i];
             int xPos = leftPos + i * tabWidth;
-            TabButton tabButton = new TabButton(xPos,topPos,tabWidth,TAB_HEIGHT+4,Component.literal(tab.name()),pButton -> switchToTab(tab),tab);
+            TabButton tabButton = new TabButton(xPos, topPos, tabWidth, TAB_HEIGHT + 4, Component.literal(tab.name()), pButton -> switchToTab(tab), tab);
             tabButton.setFGColor(DARK_GRAY);
             addRenderableWidget(tabButton);
         }
 
-        int yPos = topPos+55;
+        int yPos = topPos + 55;
 
         int statusHeight = 100;
 
-        campfireEffectWidget = new CampfireEffectWidget(minecraft,160,statusHeight,yPos,yPos+statusHeight,20);
-        campfireEffectWidget.setLeftPos(leftPos+150);
+        campfireEffectWidget = new CampfireEffectWidget(minecraft, 160, statusHeight, yPos, yPos + statusHeight, 20);
+        campfireEffectWidget.setLeftPos(leftPos + 150);
         campfireEffectWidget.setRenderTopAndBottom(false);
         campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(campfireEffectWidget);
 
-        int questWidth = imageWidth/2-10;
+        int questWidth = imageWidth / 2 - 10;
 
         int questHeight = 240;
-        questWidget = new QuestWidget(minecraft,questWidth,questHeight,topPos+TAB_HEIGHT+20,topPos+questHeight -10,50);
-        questWidget.setLeftPos(leftPos+5);
+        questWidget = new QuestWidget(minecraft, questWidth, questHeight, topPos + TAB_HEIGHT + 20, topPos + questHeight - 10, 50);
+        questWidget.setLeftPos(leftPos + 5);
         questWidget.setRenderTopAndBottom(false);
         //campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(questWidget);
 
-        activeQuestWidget = new ActiveQuestWidget(minecraft,questWidth,questHeight,topPos+TAB_HEIGHT+20,topPos+questHeight -10,50);
-        activeQuestWidget.setLeftPos(leftPos+5);
+        activeQuestWidget = new ActiveQuestWidget(minecraft, questWidth, questHeight, topPos + TAB_HEIGHT + 20, topPos + questHeight - 10, 50);
+        activeQuestWidget.setLeftPos(leftPos + 5);
         activeQuestWidget.setRenderTopAndBottom(false);
         //campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(activeQuestWidget);
 
-        info = new Button(leftPos + imageWidth/2+80,topPos+imageHeight - 25,50,20,Component.literal("Info"),b -> moreInfo());
+        teleportWidget = new TeleportWidget(minecraft, questWidth, questHeight, topPos + TAB_HEIGHT + 20, topPos + questHeight - 10, 50);
+        teleportWidget.setLeftPos(leftPos + 5);
+        teleportWidget.setRenderTopAndBottom(false);
+        //campfireEffectWidget.setRenderBackground(false);
+        this.addRenderableWidget(teleportWidget);
+
+
+        info = new Button(leftPos + imageWidth / 2 + 80, topPos + imageHeight - 25, 50, 20, Component.literal("Info"), b -> moreInfo());
         addRenderableWidget(info);
 
-        deliver = new Button(leftPos + imageWidth/2+80,topPos+imageHeight - 25-25,50,20,Component.literal("Deliver"),b -> deliver());
+        deliver = new Button(leftPos + imageWidth / 2 + 80, topPos + imageHeight - 25 - 25, 50, 20, Component.literal("Deliver"), b -> deliver());
         addRenderableWidget(deliver);
 
 
@@ -135,29 +161,45 @@ public class TownCampfireScreen extends BasicScreen {
         int threeBYPos = topPos + 165;
 
         //this.setInitialFocus(this.name);
-        home = new ImageButton(leftPos+imageWidth/2 + 32,threeBYPos,16,16,0,0,0,TownCampfires.id("textures/gui/home.png"),16,16,
-                b-> ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.SPAWN,townCampfire.location())));
+        home = new ImageButton(leftPos + imageWidth / 2 + 32, threeBYPos, 16, 16, 0, 0, 0, TownCampfires.id("textures/gui/home.png"), 16, 16,
+                b -> ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.SPAWN, townCampfire.location())));
         addRenderableWidget(home);
 
-        bed = new BedButton(leftPos+imageWidth/2 + 32+22,threeBYPos,20,20,Component.empty(),
-                b-> ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.BED,townCampfire.location())));
+        bed = new BedButton(leftPos + imageWidth / 2 + 32 + 22, threeBYPos, 20, 20, Component.empty(),
+                b -> ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.BED, townCampfire.location())));
         addRenderableWidget(bed);
 
-        gear = new ImageButton(leftPos+imageWidth/2 + 32+22 * 2,threeBYPos,20,20,0,0,0,TownCampfires.id("textures/gui/settings.png"),20,20,b->{});
+        gear = new ImageButton(leftPos + imageWidth / 2 + 32 + 22 * 2, threeBYPos, 20, 20, 0, 0, 0, TownCampfires.id("textures/gui/settings.png"), 20, 20, b -> {
+        });
         addRenderableWidget(gear);
 
-        startQuest = new Button(leftPos + imageWidth/2+16,topPos+imageHeight - 25,60,20, TextComponents.START_QUEST,
+        startQuest = new Button(leftPos + imageWidth / 2 + 16, topPos + imageHeight - 25, 60, 20, TextComponents.START_QUEST,
                 b -> pressStart(), this::startQuestTooltip);
         addRenderableWidget(startQuest);
 
-        finishQuest = new Button(leftPos + imageWidth/2+16,topPos+imageHeight - 25,60,20,Component.literal("Finish"),b -> pressFinish());
+        finishQuest = new Button(leftPos + imageWidth / 2 + 16, topPos + imageHeight - 25, 60, 20, Component.literal("Finish"), b -> pressFinish());
         addRenderableWidget(finishQuest);
 
-        questTabSwitch = new ExtendedButton(leftPos + 70,topPos+23,66,16,Component.literal("Available"),
+        questTabSwitch = new ExtendedButton(leftPos + 70, topPos + 23, 66, 16, Component.literal("Available"),
                 this::toggleQuestTab);
         addRenderableWidget(questTabSwitch);
 
+        teleport = new Button(leftPos + imageWidth / 2 + 16, topPos + imageHeight - 25, 60, 20, Component.literal("Teleport"), b -> pressTeleport());
+        addRenderableWidget(teleport);
+
         switchToTab(current);
+    }
+
+    void pressTeleport() {
+        TeleportWidget.TeleportEntry selected = teleportWidget.getSelected();
+        if (selected != null) {
+            TownCampfire campfire = selected.campfire;
+            if (!campfire.location().equals(townCampfire.location())) {
+                ForgePacketHandler.sendToServer(new C2STeleportPacket(campfire.location()));
+            } else {
+                //message?
+            }
+        }
     }
 
     void startQuestTooltip(Button pButton, PoseStack pPoseStack, int pMouseX, int pMouseY) {
@@ -168,12 +210,11 @@ public class TownCampfireScreen extends BasicScreen {
             List<Component> tooltip = new ArrayList<>();
 
 
-
             if (!TownCampfiresClient.hasEnoughSlots(quest)) {
                 int freeSlots = TownCampfiresClient.getFreeSlots();
                 int needed = quest.slots();
-                tooltip.addAll(List.of(Component.literal("Insufficient slots: requires "+needed),
-                        Component.literal("but only have "+freeSlots+ " free slots")));
+                tooltip.addAll(List.of(Component.literal("Insufficient slots: requires " + needed),
+                        Component.literal("but only have " + freeSlots + " free slots")));
             }
 
             if (!TownCampfiresClient.canAttempt(questEntry.questID)) {
@@ -181,7 +222,7 @@ public class TownCampfireScreen extends BasicScreen {
             }
 
             if (!tooltip.isEmpty()) {
-                renderTooltip(pPoseStack,tooltip, Optional.empty(),pMouseX,pMouseY);
+                renderTooltip(pPoseStack, tooltip, Optional.empty(), pMouseX, pMouseY);
             }
         }
     }
@@ -189,7 +230,7 @@ public class TownCampfireScreen extends BasicScreen {
     void pressStart() {
         QuestWidget.QuestEntry selected = questWidget.getSelected();
         if (selected != null) {
-            ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(TownCampfiresClient.clientLookup(selected.quest),townCampfire.location(),
+            ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(TownCampfiresClient.clientLookup(selected.quest), townCampfire.location(),
                     C2STownCampfireQuestPacket.Type.START));
             startQuest.active = false;
         } else {
@@ -224,11 +265,11 @@ public class TownCampfireScreen extends BasicScreen {
             }
         }
         if (quest != null) {
-            Minecraft.getInstance().pushGuiLayer(new QuestInfoScreen(quest.name(),this,quest));
+            Minecraft.getInstance().pushGuiLayer(new QuestInfoScreen(quest.name(), this, quest));
         }
     }
 
-    void deliver(){
+    void deliver() {
         ActiveQuestWidget.ActiveQuestEntry selected = activeQuestWidget.getSelected();
         if (selected != null) {
             ForgePacketHandler.sendToServer(new C2STownCampfireQuestPacket(TownCampfiresClient.clientLookup(selected.questInstance.quest()),
@@ -247,9 +288,9 @@ public class TownCampfireScreen extends BasicScreen {
 
         int nameWidth = 90;
 
-        int nameX = (imageWidth-nameWidth) / 2;
+        int nameX = (imageWidth - nameWidth) / 2;
 
-        this.name = new EditBox(this.font, leftPos + nameX +28, topPos + TAB_HEIGHT + 8, nameWidth, 12,
+        this.name = new EditBox(this.font, leftPos + nameX + 28, topPos + TAB_HEIGHT + 8, nameWidth, 12,
                 Component.translatable("towncampfires.container.name"));
         this.name.setTextColor(0xeeeeee);
         this.name.setTextColorUneditable(0xeeeeee);
@@ -257,12 +298,27 @@ public class TownCampfireScreen extends BasicScreen {
         this.name.setMaxLength(40);
         this.name.setResponder(this::onNameChanged);
         this.addWidget(this.name);
+
+        this.teleportSearch = new EditBox(this.font, leftPos + 8, topPos + TAB_HEIGHT + 6, nameWidth, 12,
+                Component.translatable("towncampfires.container.name"));
+        this.teleportSearch.setTextColor(0xeeeeee);
+        this.teleportSearch.setTextColorUneditable(0xeeeeee);
+        //this.teleportSearch.setBordered(false);
+        this.teleportSearch.setMaxLength(40);
+        this.teleportSearch.setResponder(this::updateSearch);
+        this.addWidget(this.teleportSearch);
+
+        teleportWidget.refresh();
     }
 
     private void onNameChanged(String string) {
         if (!string.isBlank()) {
-            ForgePacketHandler.sendToServer(new C2SSetTownCampfireNamePacket(string,townCampfire.location()));
+            ForgePacketHandler.sendToServer(new C2SSetTownCampfireNamePacket(string, townCampfire.location()));
         }
+    }
+
+    private void updateSearch(String s) {
+        teleportWidget.update(s);
     }
 
     @Override
@@ -276,11 +332,12 @@ public class TownCampfireScreen extends BasicScreen {
         this.toolTip = pToolTip;
     }
 
+    @Override
     protected void renderBg(PoseStack pPoseStack, float pPartialTick, int pMouseX, int pMouseY) {
         int xSize = imageWidth;
-        int ySize = imageHeight - TAB_HEIGHT+4;
-        RenderUtils.blitNineSlicedSized(pPoseStack,BACKGROUND,leftPos,topPos + TAB_HEIGHT,
-                xSize,ySize,4,4,12,12,0,0,12,12);
+        int ySize = imageHeight - TAB_HEIGHT + 4;
+        RenderUtils.blitNineSlicedSized(pPoseStack, BACKGROUND, leftPos, topPos + TAB_HEIGHT,
+                xSize, ySize, 4, 4, 12, 12, 0, 0, 12, 12);
 
     }
 
@@ -291,9 +348,10 @@ public class TownCampfireScreen extends BasicScreen {
         this.toolTip = null;
         super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
         this.name.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+        this.teleportSearch.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
 
 
-        if (townCampfire == null)return;
+        if (townCampfire == null) return;
 
         int questCount = townCampfire.getAvailableQuests();
 
@@ -301,31 +359,31 @@ public class TownCampfireScreen extends BasicScreen {
             case status -> {
                 int y = 22;
                 int h = 15;
-                font.draw(pPoseStack,Component.literal("Villagers: "+townCampfire.getEffectiveVillagers()+"/"+townCampfire.getMaxVillagers()),
-                        leftPos+8,topPos+TAB_HEIGHT+y,DARK_GRAY);
-                font.draw(pPoseStack,Component.literal("Blocks Allowed: "+townCampfire.getUsedBlocks()+"/"+townCampfire.getAllowedBlocks()),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h,DARK_GRAY);
+                font.draw(pPoseStack, Component.literal("Villagers: " + townCampfire.getEffectiveVillagers() + "/" + townCampfire.getMaxVillagers()),
+                        leftPos + 8, topPos + TAB_HEIGHT + y, DARK_GRAY);
+                font.draw(pPoseStack, Component.literal("Blocks Allowed: " + townCampfire.getUsedBlocks() + "/" + townCampfire.getAllowedBlocks()),
+                        leftPos + 8, topPos + TAB_HEIGHT + y + h, DARK_GRAY);
 
-                font.draw(pPoseStack,Component.literal("Work Bench Limit: "+townCampfire.getUsedWorkbenches()+"/"+townCampfire.getAllowedWorkbenches()),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h*2,DARK_GRAY);
+                font.draw(pPoseStack, Component.literal("Work Bench Limit: " + townCampfire.getUsedWorkbenches() + "/" + townCampfire.getAllowedWorkbenches()),
+                        leftPos + 8, topPos + TAB_HEIGHT + y + h * 2, DARK_GRAY);
 
-                font.draw(pPoseStack,Component.literal("Quests Available: "+questCount+"/"+townCampfire.getMaxQuests()),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h*3,DARK_GRAY);
+                font.draw(pPoseStack, Component.literal("Quests Available: " + questCount + "/" + townCampfire.getMaxQuests()),
+                        leftPos + 8, topPos + TAB_HEIGHT + y + h * 3, DARK_GRAY);
 
-                font.draw(pPoseStack,Component.literal("Refresh: "+TownCampfire.timeUntilRefresh(minecraft.level.getGameTime())),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h*4,DARK_GRAY);
+                font.draw(pPoseStack, Component.literal("Refresh: " + TownCampfire.timeUntilRefresh(minecraft.level.getGameTime())),
+                        leftPos + 8, topPos + TAB_HEIGHT + y + h * 4, DARK_GRAY);
 
-                font.draw(pPoseStack,Component.literal("Raid Chance: "+"TODO"),
-                        leftPos+8,topPos+TAB_HEIGHT+y + h*5,DARK_GRAY);
+                font.draw(pPoseStack, Component.literal("Raid Chance: " + "TODO"),
+                        leftPos + 8, topPos + TAB_HEIGHT + y + h * 5, DARK_GRAY);
                 renderExperience(pPoseStack, pMouseX, pMouseY, pPartialTick);
 
-                font.draw(pPoseStack,Component.literal("Local Effects"),
-                        leftPos+imageWidth/2f + 32,topPos+TAB_HEIGHT+y,DARK_GRAY);
+                font.draw(pPoseStack, Component.literal("Local Effects"),
+                        leftPos + imageWidth / 2f + 32, topPos + TAB_HEIGHT + y, DARK_GRAY);
             }
             case quest -> {
 
-                font.draw(pPoseStack,Component.literal("Quests: "+questCount+"/"+townCampfire.getMaxQuests()),
-                        leftPos+8,topPos+TAB_HEIGHT+5,DARK_GRAY);
+                font.draw(pPoseStack, Component.literal("Quests: " + questCount + "/" + townCampfire.getMaxQuests()),
+                        leftPos + 8, topPos + TAB_HEIGHT + 5, DARK_GRAY);
 
 
                 int spacing = 12;
@@ -336,22 +394,22 @@ public class TownCampfireScreen extends BasicScreen {
                         if (questEntry != null) {
                             QuestInstance questInstance = questEntry.questInstance;
                             Quest quest = questInstance.quest();
-                            int xStart = leftPos + imageWidth/2 ;
-                            int yStart = topPos+TAB_HEIGHT+4;
+                            int xStart = leftPos + imageWidth / 2;
+                            int yStart = topPos + TAB_HEIGHT + 4;
 
-                            itemRenderer.renderAndDecorateFakeItem(quest.icon(),xStart,yStart);
+                            itemRenderer.renderAndDecorateFakeItem(quest.icon(), xStart, yStart);
 
-                            font.draw(pPoseStack, quest.compactName(),xStart+20,yStart,0xffffff);
+                            font.draw(pPoseStack, quest.compactName(), xStart + 20, yStart, 0xffffff);
 
-                            int yLine = yStart+18;
+                            int yLine = yStart + 18;
 
                             List<FormattedCharSequence> seq = quest.compactDesc().stream().map(Component::getVisualOrderText).toList();
                             for (FormattedCharSequence formattedCharSequence : seq) {
                                 font.draw(pPoseStack, formattedCharSequence, xStart + 1, yLine, 0xffffff);
                                 yLine += spacing;
                             }
-                            font.draw(pPoseStack,Component.literal("Progress"),xStart,yLine,DARK_GRAY);
-                            yLine+=spacing;
+                            font.draw(pPoseStack, Component.literal("Progress"), xStart, yLine, DARK_GRAY);
+                            yLine += spacing;
 
 
                             List<QuestCriteria<?>> criterias = questInstance.quest().successCriteria().custom();
@@ -361,43 +419,42 @@ public class TownCampfireScreen extends BasicScreen {
 
                                 int progress = questInstance.customProgress().isEmpty() ? 0 : questInstance.customProgress().get(i);
 
-                                font.draw(pPoseStack, entry.desc().copy().append(" "+progress+"/"+count),xStart,yLine,0xffffff);
-                                yLine+=spacing;
+                                font.draw(pPoseStack, entry.desc().copy().append(" " + progress + "/" + count), xStart, yLine, 0xffffff);
+                                yLine += spacing;
                             }
-
 
 
                             List<Delivery> deliveries = quest.successCriteria().deliveries();
                             for (int i = 0; i < deliveries.size(); i++) {
                                 Delivery entry = deliveries.get(i);
-                                int x0 = xStart+40;
-                                int x1 = x0+18;
+                                int x0 = xStart + 40;
+                                int x1 = x0 + 18;
                                 int y0 = yLine;
-                                int y1 = y0+18;
-                                font.draw(pPoseStack,Component.literal("Deliver"),xStart,y0+3,DARK_GRAY);
+                                int y1 = y0 + 18;
+                                font.draw(pPoseStack, Component.literal("Deliver"), xStart, y0 + 3, DARK_GRAY);
                                 ItemStack stack = entry.ingredient().getItems()[0].copy();
                                 stack.setCount(entry.required());
-                                minecraft.getItemRenderer().renderGuiItem(stack,x0,y0);
-                                minecraft.getItemRenderer().renderGuiItemDecorations(font,stack,x0,y0,questInstance.deliveryProgress().get(i)+"/"+entry.required());
+                                minecraft.getItemRenderer().renderGuiItem(stack, x0, y0);
+                                minecraft.getItemRenderer().renderGuiItemDecorations(font, stack, x0, y0, questInstance.deliveryProgress().get(i) + "/" + entry.required());
                                 if (pMouseX > x0 && pMouseY > y0 && pMouseX < x1 && pMouseY < y1) {
-                                    renderTooltip(pPoseStack,stack,pMouseX,pMouseY);
+                                    renderTooltip(pPoseStack, stack, pMouseX, pMouseY);
                                 }
-                                yLine+=18;
+                                yLine += 18;
                             }
 
 
-                            font.draw(pPoseStack,Component.literal("Members"),xStart,yLine,DARK_GRAY);
+                            font.draw(pPoseStack, Component.literal("Members"), xStart, yLine, DARK_GRAY);
 
-                            yLine+=spacing;
+                            yLine += spacing;
 
                             StringBuilder allMembers = new StringBuilder();
 
 
-                            for (UUID uuid: questInstance.getMembers()) {
+                            for (UUID uuid : questInstance.getMembers()) {
                                 String name = UsernameCache.getLastKnownUsername(uuid);
                                 allMembers.append(name).append(",");
                             }
-                            font.draw(pPoseStack, allMembers.toString(),xStart,yLine,DARK_GRAY);
+                            font.draw(pPoseStack, allMembers.toString(), xStart, yLine, DARK_GRAY);
                         }
                     }
 
@@ -405,58 +462,84 @@ public class TownCampfireScreen extends BasicScreen {
                         QuestWidget.QuestEntry questEntry = questWidget.getSelected();
                         if (questEntry != null) {
                             Quest quest = questEntry.quest;
-                            int xStart = leftPos + imageWidth/2;
-                            int yStart = topPos+TAB_HEIGHT+6;
-                            itemRenderer.renderAndDecorateFakeItem(quest.icon(),xStart,yStart);
+                            int xStart = leftPos + imageWidth / 2;
+                            int yStart = topPos + TAB_HEIGHT + 6;
+                            itemRenderer.renderAndDecorateFakeItem(quest.icon(), xStart, yStart);
 
-                            font.draw(pPoseStack, quest.compactName(),xStart+20,yStart,0xffffff);
-                            font.draw(pPoseStack, "Diff: "+quest.difficulty(),xStart+imageWidth/2 - 40,yStart,DARK_GRAY);
+                            font.draw(pPoseStack, quest.compactName(), xStart + 20, yStart, 0xffffff);
+                            font.draw(pPoseStack, "Diff: " + quest.difficulty(), xStart + imageWidth / 2 - 40, yStart, DARK_GRAY);
 
                             List<FormattedCharSequence> seq = quest.compactDesc().stream().map(Component::getVisualOrderText).toList();
-                            for (int i = 0; i < seq.size();i++) {
+                            for (int i = 0; i < seq.size(); i++) {
                                 FormattedCharSequence formattedCharSequence = seq.get(i);
-                                font.draw(pPoseStack,formattedCharSequence,xStart + 1,yStart + 16 + 10 * i,0xffffff);
+                                font.draw(pPoseStack, formattedCharSequence, xStart + 1, yStart + 16 + 10 * i, 0xffffff);
                             }
                             int completeY = 88;
-                            font.draw(pPoseStack,Component.literal("Complete Conditions"),xStart,yStart+completeY,DARK_GRAY);
+                            font.draw(pPoseStack, Component.literal("Complete Conditions"), xStart, yStart + completeY, DARK_GRAY);
 
                             Component mp_type = Component.literal(quest.type().name());
-                            font.draw(pPoseStack,mp_type,xStart+imageWidth/2 - 4 - font.width(mp_type),yStart+completeY,DARK_GRAY);
+                            font.draw(pPoseStack, mp_type, xStart + imageWidth / 2 - 4 - font.width(mp_type), yStart + completeY, DARK_GRAY);
 
-                            Component attempts = Component.literal("Attempts:"+quest.attempts());
-                            font.draw(pPoseStack,attempts,xStart+imageWidth/2 - 4 - font.width(attempts),yStart+completeY+12,DARK_GRAY);
+                            Component attempts = Component.literal("Attempts:" + quest.attempts());
+                            font.draw(pPoseStack, attempts, xStart + imageWidth / 2 - 4 - font.width(attempts), yStart + completeY + 12, DARK_GRAY);
 
-                            Component slots = Component.literal("Slots:"+quest.slots());
-                            font.draw(pPoseStack,slots,xStart+imageWidth/2 - 4 - font.width(slots),yStart+completeY+12*2,DARK_GRAY);
+                            Component slots = Component.literal("Slots:" + quest.slots());
+                            font.draw(pPoseStack, slots, xStart + imageWidth / 2 - 4 - font.width(slots), yStart + completeY + 12 * 2, DARK_GRAY);
 
-                            Component xp = Component.literal("XP:"+quest.rewards().campfireExperience());
-                            font.draw(pPoseStack,xp,xStart+imageWidth/2 - 4 - font.width(xp),yStart+completeY+12*3,DARK_GRAY);
+                            Component xp = Component.literal("XP:" + quest.rewards().campfireExperience());
+                            font.draw(pPoseStack, xp, xStart + imageWidth / 2 - 4 - font.width(xp), yStart + completeY + 12 * 3, DARK_GRAY);
 
                             List<QuestCriteria<?>> criterias = quest.successCriteria().custom();
                             for (int i = 0; i < criterias.size(); i++) {
                                 QuestCriteria<?> entry = criterias.get(i);
                                 int count = entry.count();
-                                font.draw(pPoseStack, entry.desc().copy().append(" "+count),xStart,yStart + completeY +10 +  10 * i,0xffffff);
+                                font.draw(pPoseStack, entry.desc().copy().append(" " + count), xStart, yStart + completeY + 10 + 10 * i, 0xffffff);
                             }
 
                             List<Delivery> deliveries = quest.successCriteria().deliveries();
                             for (int i = 0; i < deliveries.size(); i++) {
                                 Delivery entry = deliveries.get(i);
-                                int x0 = xStart+40;
-                                int x1 = x0+18;
+                                int x0 = xStart + 40;
+                                int x1 = x0 + 18;
                                 int y0 = yStart + completeY + 12 + 18 * i;
-                                int y1 = y0+18;
-                                font.draw(pPoseStack,Component.literal("Deliver"),xStart,y0,DARK_GRAY);
+                                int y1 = y0 + 18;
+                                font.draw(pPoseStack, Component.literal("Deliver"), xStart, y0, DARK_GRAY);
                                 ItemStack stack = entry.ingredient().getItems()[0].copy();
                                 stack.setCount(entry.required());
-                                minecraft.getItemRenderer().renderGuiItem(stack,x0,y0);
-                                minecraft.getItemRenderer().renderGuiItemDecorations(font,stack,x0,y0);
+                                minecraft.getItemRenderer().renderGuiItem(stack, x0, y0);
+                                minecraft.getItemRenderer().renderGuiItemDecorations(font, stack, x0, y0);
                                 if (pMouseX > x0 && pMouseY > y0 && pMouseX < x1 && pMouseY < y1) {
-                                    renderTooltip(pPoseStack,stack,pMouseX,pMouseY);
+                                    renderTooltip(pPoseStack, stack, pMouseX, pMouseY);
                                 }
                             }
                         }
                     }
+                }
+            }
+            case teleport -> {
+                TeleportWidget.TeleportEntry selected = teleportWidget.getSelected();
+                if (selected != null) {
+                    int yLine = topPos + TAB_HEIGHT + 108;
+                    int startX = leftPos + imageWidth / 2 + 8;
+                    TownCampfire lookingAt = selected.campfire;
+                    font.draw(pPoseStack, lookingAt.name(), startX, yLine, DARK_GRAY);
+                    font.draw(pPoseStack, "Level: " + lookingAt.getLevel(), startX, yLine + 12, DARK_GRAY);
+                    font.draw(pPoseStack, "Quests: " + lookingAt.getMaxQuests(), startX, yLine + 24, DARK_GRAY);
+                    font.draw(pPoseStack, "Biome: " + Minecraft.getInstance().level.getBiome(townCampfire.location()).unwrapKey().get().location(), startX, yLine + 36, DARK_GRAY);
+                    font.draw(pPoseStack, "Villagers: " + lookingAt.getEffectiveVillagers(), startX, yLine + 48, DARK_GRAY);
+                    font.draw(pPoseStack, "Distance: " + DECIMAL_FORMAT.format(Math.sqrt(lookingAt.location().distSqr(townCampfire.location()))), startX, yLine + 60, DARK_GRAY);
+
+                    DynamicTexture texture = selected.screenshot;
+                    RenderSystem.setShader(GameRenderer::getPositionTexShader);
+                    RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+                    ResourceLocation iconLocation = selected.screenshotLocation;
+                    RenderSystem.setShaderTexture(0, texture != null ? iconLocation : ICON_MISSING);
+                    RenderSystem.enableBlend();
+                    int screenW = 144;
+                    int screenH = 96;
+                    GuiComponent.blit(pPoseStack, startX, topPos + TAB_HEIGHT + 6, 0.0F, 0.0F, screenW, screenH, screenW, screenH);
+                    RenderSystem.disableBlend();
+
                 }
             }
         }
@@ -467,36 +550,36 @@ public class TownCampfireScreen extends BasicScreen {
         }
     }
 
+    static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("#.##");
+
+    static final ResourceLocation ICON_MISSING = new ResourceLocation("textures/misc/unknown_server.png");
+
     void renderExperience(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.setShaderTexture(0, GuiComponent.GUI_ICONS_LOCATION);
-        int xPos = leftPos + imageWidth/ 2 - 91;
+        int xPos = leftPos + imageWidth / 2 - 91;
         int yPos = topPos + imageHeight - 22;
         int j = 182;
         long experience = townCampfire.getExperience();
         int experiencePerLevel = TownCampfireConfig.CONFIG.experience_per_level.get();
 
-        float scale = (((float)experience % experiencePerLevel) / experiencePerLevel) * 183f;
+        float scale = (((float) experience % experiencePerLevel) / experiencePerLevel) * 183f;
 
         this.blit(pPoseStack, xPos, yPos, 0, 64, j, 5);
         if (scale > 0) {
-            this.blit(pPoseStack, xPos, yPos, 0, 69, (int)scale, 5);
+            this.blit(pPoseStack, xPos, yPos, 0, 69, (int) scale, 5);
         }
 
-        String level = "Level: "+townCampfire.getLevel();
+        String level = "Level: " + townCampfire.getLevel();
 
-        font.draw(pPoseStack,Component.literal(level),
-                leftPos+ imageWidth/2f - font.width(level)/2f,yPos- 15,DARK_GRAY);
+        font.draw(pPoseStack, Component.literal(level),
+                leftPos + imageWidth / 2f - font.width(level) / 2f, yPos - 15, DARK_GRAY);
 
-        String progress = (experience%experiencePerLevel)+"/"+experiencePerLevel;
+        String progress = (experience % experiencePerLevel) + "/" + experiencePerLevel;
 
-        font.draw(pPoseStack,Component.literal(progress),
-                leftPos+ imageWidth/2f - font.width(progress)/2f,yPos+ 10,DARK_GRAY);
+        font.draw(pPoseStack, Component.literal(progress),
+                leftPos + imageWidth / 2f - font.width(progress) / 2f, yPos + 10, DARK_GRAY);
 
-    }
-
-    boolean isEditboxActive() {
-        return current == Tab.status;
     }
 
     @Override
@@ -505,7 +588,8 @@ public class TownCampfireScreen extends BasicScreen {
             this.minecraft.player.closeContainer();
         }
 
-        return this.name.keyPressed(pKeyCode, pScanCode, pModifiers) || this.name.canConsumeInput() || super.keyPressed(pKeyCode, pScanCode, pModifiers);
+        return this.name.keyPressed(pKeyCode, pScanCode, pModifiers) || this.name.canConsumeInput() ||
+                this.teleportSearch.keyPressed(pKeyCode, pScanCode, pModifiers) || this.teleportSearch.canConsumeInput() || super.keyPressed(pKeyCode, pScanCode, pModifiers);
     }
 
     @Override
@@ -526,20 +610,27 @@ public class TownCampfireScreen extends BasicScreen {
     }
 
     protected void switchToTab(Tab tab) {
-         current = tab;
+        current = tab;
 
-         boolean status = isEditboxActive();
-         name.setEditable(status);
-         name.setVisible(status);
-         home.visible = bed.visible = gear.visible = status;
-         campfireEffectWidget.setVisible(status);
+        boolean mainTab = tab == Tab.status;
+        name.setEditable(mainTab);
+        name.setVisible(mainTab);
 
-         questTabSwitch.visible = tab == Tab.quest;
+        boolean teleportTab = tab == Tab.teleport;
+        teleportSearch.setEditable(teleportTab);
+        teleportSearch.setVisible(teleportTab);
+        teleportWidget.setVisible(teleportTab);
+        teleport.visible = teleportTab;
 
-         handleQuestTabs(current == Tab.quest);
-         if (tab == Tab.trades) {
-             ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.TRADE,townCampfire.location()));
-         }
+        home.visible = bed.visible = gear.visible = mainTab;
+        campfireEffectWidget.setVisible(mainTab);
+
+        questTabSwitch.visible = tab == Tab.quest;
+
+        handleQuestTabs(current == Tab.quest);
+        if (tab == Tab.trades) {
+            ForgePacketHandler.sendToServer(new C2STownCampfireButtonPacket(C2STownCampfireButtonPacket.CampfireButton.TRADE, townCampfire.location()));
+        }
     }
 
 
@@ -553,14 +644,14 @@ public class TownCampfireScreen extends BasicScreen {
 
         ActiveQuestWidget.ActiveQuestEntry e = activeQuestWidget.getSelected();
 
-        finishQuest.visible = visible && questTab==QuestTab.current && e != null;
-        info.visible = visible && (questTab==QuestTab.current && (questWidget.getSelected() != null||e != null));
+        finishQuest.visible = visible && questTab == QuestTab.current && e != null;
+        info.visible = visible && (questTab == QuestTab.current && (questWidget.getSelected() != null || e != null));
         deliver.visible = visible && questTab == QuestTab.available && e != null && !e.questInstance.quest().successCriteria().deliveries().isEmpty();
     }
 
     protected void updateStartQuest(boolean visible) {
         QuestWidget.QuestEntry selected = questWidget.getSelected();
-        startQuest.visible = visible && questTab==QuestTab.available && selected != null && isQuestAvailable(selected.quest);
+        startQuest.visible = visible && questTab == QuestTab.available && selected != null && isQuestAvailable(selected.quest);
         startQuest.active = startQuest.visible && TownCampfiresClient.hasEnoughSlots(selected.quest) && TownCampfiresClient.canAttempt(selected.questID);
         if (selected != null && selected.quest != null) {
             boolean needsPrep = selected.quest.type() != Quest.MultiplayerType.solo;
@@ -573,7 +664,7 @@ public class TownCampfireScreen extends BasicScreen {
         ResourceLocation questID = TownCampfiresClient.clientLookup(quest);
         for (QuestInstance currentQuest : TownCampfiresClient.currentQuests) {
             ResourceLocation id = currentQuest.questID();
-            if (Objects.equals(questID,id) && currentQuest.status().active) {
+            if (Objects.equals(questID, id) && currentQuest.status().active) {
                 return false;
             }
         }
@@ -588,7 +679,7 @@ public class TownCampfireScreen extends BasicScreen {
             this.tab = tab;
         }
 
-        public TabButton(int pX, int pY, int pWidth, int pHeight, Component pMessage, OnPress pOnPress, OnTooltip pOnTooltip,Tab tab) {
+        public TabButton(int pX, int pY, int pWidth, int pHeight, Component pMessage, OnPress pOnPress, OnTooltip pOnTooltip, Tab tab) {
             super(pX, pY, pWidth, pHeight, pMessage, pOnPress, pOnTooltip);
             this.tab = tab;
         }
@@ -599,8 +690,8 @@ public class TownCampfireScreen extends BasicScreen {
             RenderSystem.setShader(GameRenderer::getPositionTexShader);
             RenderSystem.setShaderTexture(0, BACKGROUND);
             RenderSystem.enableDepthTest();
-            blitNineSlicedSizedTab(pPoseStack,BACKGROUND,x,y,
-                    this.width,this.height + (isSelected ? 4 : 0),4,4,12,12,0,0,12,12);
+            blitNineSlicedSizedTab(pPoseStack, BACKGROUND, x, y,
+                    this.width, this.height + (isSelected ? 4 : 0), 4, 4, 12, 12, 0, 0, 12, 12);
             int j = getFGColor();
             drawCenteredString(pPoseStack, font, this.getMessage(), this.x + this.width / 2, this.y + (this.height - 8) / 2, j | Mth.ceil(this.alpha * 255.0F) << 24);
 
@@ -611,13 +702,13 @@ public class TownCampfireScreen extends BasicScreen {
 
         public static void drawCenteredString(PoseStack pPoseStack, Font pFont, Component pText, int pX, int pY, int pColor) {
             FormattedCharSequence formattedcharsequence = pText.getVisualOrderText();
-            pFont.draw(pPoseStack, formattedcharsequence, (float)(pX - pFont.width(formattedcharsequence) / 2), (float)pY, pColor);
+            pFont.draw(pPoseStack, formattedcharsequence, (float) (pX - pFont.width(formattedcharsequence) / 2), (float) pY, pColor);
         }
-
 
 
         /**
          * backport of 1.20 nineSlice
+         *
          * @param texture
          * @param x
          * @param y
@@ -633,15 +724,15 @@ public class TownCampfireScreen extends BasicScreen {
          */
         public static void blitNineSlicedSizedTab(PoseStack stack, ResourceLocation texture, int x, int y, int width, int height,
                                                   int sliceSize, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
-            blitNineSlicedSizedTab(stack,texture, x, y, width, height, sliceSize, sliceSize, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight);
+            blitNineSlicedSizedTab(stack, texture, x, y, width, height, sliceSize, sliceSize, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight);
         }
 
-        public static void blitNineSlicedSizedTab(PoseStack stack,ResourceLocation texture, int x, int y, int width, int height, int sliceWidth,
+        public static void blitNineSlicedSizedTab(PoseStack stack, ResourceLocation texture, int x, int y, int width, int height, int sliceWidth,
                                                   int sliceHeight, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
-            blitNineSlicedSizedTab(stack,texture, x, y, width, height, sliceWidth, sliceHeight, sliceWidth, sliceHeight, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight);
+            blitNineSlicedSizedTab(stack, texture, x, y, width, height, sliceWidth, sliceHeight, sliceWidth, sliceHeight, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight);
         }
 
-        public static void blitNineSlicedSizedTab(PoseStack stack,ResourceLocation texture, int x, int y, int width, int height, int cornerWidth, int cornerHeight,
+        public static void blitNineSlicedSizedTab(PoseStack stack, ResourceLocation texture, int x, int y, int width, int height, int cornerWidth, int cornerHeight,
                                                   int edgeWidth, int edgeHeight, int uWidth, int vHeight, int uOffset, int vOffset, int textureWidth, int textureHeight) {
             cornerWidth = Math.min(cornerWidth, width / 2);
             edgeWidth = Math.min(edgeWidth, width / 2);
@@ -692,7 +783,7 @@ public class TownCampfireScreen extends BasicScreen {
 
     public <T extends ObjectSelectionList.Entry<T>> void buildList(List<ResourceLocation> list,
                                                                    Consumer<T> consumer, Function<ResourceLocation, T> newEntry) {
-        list.forEach(location-> {
+        list.forEach(location -> {
             T entry = newEntry.apply(location);
             if (entry != null) {
                 consumer.accept(entry);
@@ -722,14 +813,14 @@ public class TownCampfireScreen extends BasicScreen {
 
         public void refreshList() {
             this.clearEntries();
-            buildList(townCampfire.getEffectIds(),this::addEntry, location->new CampfireEffectEntry(TownCampfiresClient.campfireEffectLoader.getCampfireEffects().get(location)));
+            buildList(townCampfire.getEffectIds(), this::addEntry, location -> new CampfireEffectEntry(TownCampfiresClient.campfireEffectLoader.getCampfireEffects().get(location)));
         }
 
         @Override
         public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
             if (visible) {
                 //left,bottom,right,top
-                GuiComponent.enableScissor(x0,y0,x1+10,y1);
+                GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
                 super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
                 GuiComponent.disableScissor();
             }
@@ -754,19 +845,18 @@ public class TownCampfireScreen extends BasicScreen {
 
             @Override
             public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
-                               int mouseX, int mouseY, boolean isMouseOver, float partialTick)
-            {
+                               int mouseX, int mouseY, boolean isMouseOver, float partialTick) {
                 Font font = TownCampfireScreen.this.font;
-                font.draw(poseStack,effect.name(),left,top,DARK_GRAY);
+                font.draw(poseStack, effect.name(), left, top, DARK_GRAY);
 
                 if (isMouseOver) {
                     List<FormattedCharSequence> seq = effect.desc().stream().map(Component::getVisualOrderText).toList();
                     TownCampfireScreen.this.setToolTip(seq);
                 }
 
-            //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,
+                //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,
                 //    listWidth))), left + 3, top + 2, 0xFFFFFF);
-            //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(version, listWidth))),
+                //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(version, listWidth))),
                 //    left + 3, top + 2 + font.lineHeight, 0xCCCCCC);
 
             }
@@ -776,6 +866,157 @@ public class TownCampfireScreen extends BasicScreen {
             }
         }
     }
+
+    protected class TeleportWidget extends ObjectSelectionList<TeleportWidget.TeleportEntry> {
+
+        boolean visible;
+
+        public TeleportWidget(Minecraft pMinecraft, int pWidth, int pHeight, int pY0, int pY1, int pItemHeight) {
+            super(pMinecraft, pWidth, pHeight, pY0, pY1, pItemHeight);
+        }
+
+        @Override
+        public int getRowWidth() {
+            return width;
+        }
+
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
+
+        public void refresh() {
+            update(teleportSearch.getValue());
+        }
+
+        void update(String s) {
+            this.clearEntries();
+            teleports.forEach(townCampfire -> addEntry(new TeleportEntry(townCampfire)));
+        }
+
+        @Override
+        public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
+            if (visible) {
+                //left,bottom,right,top
+                GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
+                super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+                GuiComponent.disableScissor();
+            }
+        }
+
+        @Override
+        public void setSelected(@Nullable TownCampfireScreen.TeleportWidget.TeleportEntry pSelected) {
+            super.setSelected(pSelected);
+            teleport.active = pSelected != null && Math.sqrt(pSelected.campfire.location().distSqr(townCampfire.location())) <= TownCampfireConfig.CONFIG.unteleportable_distance.get();
+        }
+
+        @Override
+        protected int getScrollbarPosition() {
+            return x1;
+        }
+
+        public class TeleportEntry extends ObjectSelectionList.Entry<TeleportEntry> implements AutoCloseable {
+            private final TownCampfire campfire;
+            ResourceLocation screenshotLocation;
+            Path screenshotFile;
+            @Nullable
+            DynamicTexture screenshot;
+
+            TeleportEntry(TownCampfire info) {
+                this.campfire = info;
+                String s = TownCampfiresClient.getScreenshotName(minecraft,info.location());
+                screenshotFile = minecraft.gameDirectory.toPath().resolve("screenshots").resolve(s);
+                screenshotLocation = new ResourceLocation("minecraft", "screenshots/" + Util.sanitizeName(s,
+                        ResourceLocation::validPathChar));
+
+                if (!Files.isRegularFile(this.screenshotFile)) {
+                    this.screenshotFile = null;
+                }
+
+                this.screenshot = loadScreenshot();
+            }
+
+            @Nullable
+            private DynamicTexture loadScreenshot() {
+                boolean flag = this.screenshotFile != null && Files.isRegularFile(this.screenshotFile);
+                if (flag) {
+                    try {
+                        InputStream inputstream = Files.newInputStream(screenshotFile);
+
+                        DynamicTexture dynamicTexture;
+                        try {
+                            NativeImage nativeimage = NativeImage.read(inputstream);
+                            //   Validate.validState(nativeimage.getWidth() == 64, "Must be 64 pixels wide");
+                            //   Validate.validState(nativeimage.getHeight() == 64, "Must be 64 pixels high");
+                            DynamicTexture dynamictexture = new DynamicTexture(nativeimage);
+                            minecraft.getTextureManager().register(screenshotLocation, dynamictexture);
+                            dynamicTexture = dynamictexture;
+                        } catch (Throwable throwable1) {
+                            try {
+                                inputstream.close();
+                            } catch (Throwable throwable) {
+                                throwable1.addSuppressed(throwable);
+                            }
+
+                            throw throwable1;
+                        }
+
+                        inputstream.close();
+                        return dynamicTexture;
+                    } catch (Throwable throwable2) {
+                        throwable2.printStackTrace();
+                        return null;
+                    }
+                } else {
+                    minecraft.getTextureManager().release(screenshotLocation);
+                    return null;
+                }
+            }
+
+            @Override
+            public Component getNarration() {
+                return Component.translatable("narrator.select", campfire.name());
+            }
+
+            @Override
+            public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
+                               int mouseX, int mouseY, boolean isMouseOver, float partialTick) {
+                Font font = TownCampfireScreen.this.font;
+                font.draw(poseStack, campfire.name(), left, top, DARK_GRAY);
+
+                if (isMouseOver) {
+                    // List<FormattedCharSequence> seq = campfire.desc().stream().map(Component::getVisualOrderText).toList();
+                    //TownCampfireScreen.this.setToolTip(seq);
+                }
+
+                //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,
+                //    listWidth))), left + 3, top + 2, 0xFFFFFF);
+                //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(version, listWidth))),
+                //    left + 3, top + 2 + font.lineHeight, 0xCCCCCC);
+
+            }
+
+            @Override
+            public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+                setSelected(this);
+                return true;
+            }
+
+            @Override
+            public void close() {
+                if (this.screenshot != null) {
+                    this.screenshot.close();
+                }
+            }
+        }
+    }
+
+    @Override
+    public void removed() {
+        if (this.teleportWidget != null) {
+            this.teleportWidget.children().forEach(TeleportWidget.TeleportEntry::close);
+        }
+    }
+
 
     protected class QuestWidget extends ObjectSelectionList<QuestWidget.QuestEntry> {
 
@@ -813,11 +1054,11 @@ public class TownCampfireScreen extends BasicScreen {
 
         public void refreshList() {
             this.clearEntries();
-            buildList(townCampfire.getQuestIds(),this::addEntry, location-> {
+            buildList(townCampfire.getQuestIds(), this::addEntry, location -> {
                 if (TownCampfiresClient.isQuestAlreadyActive(location)) {
                     return null;
                 }
-                return new QuestEntry(location,TownCampfiresClient.questLoader.getQuestMap().get(location));
+                return new QuestEntry(location, TownCampfiresClient.questLoader.getQuestMap().get(location));
             });
         }
 
@@ -825,7 +1066,7 @@ public class TownCampfireScreen extends BasicScreen {
         public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
             if (visible) {
                 //left,bottom,right,top
-                GuiComponent.enableScissor(x0,y0,x1+10,y1);
+                GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
                 super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
                 GuiComponent.disableScissor();
             }
@@ -858,20 +1099,19 @@ public class TownCampfireScreen extends BasicScreen {
 
             @Override
             public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
-                               int mouseX, int mouseY, boolean isMouseOver, float partialTick)
-            {
+                               int mouseX, int mouseY, boolean isMouseOver, float partialTick) {
                 Font font = TownCampfireScreen.this.font;
-                itemRenderer.renderAndDecorateFakeItem(quest.icon(),left,top);
-                font.draw(poseStack, quest.compactName(),left+20,top,0xffffff);
-                font.draw(poseStack, "Diff: "+quest.difficulty(),left + entryWidth - 32,top,0xffffff);
+                itemRenderer.renderAndDecorateFakeItem(quest.icon(), left, top);
+                font.draw(poseStack, quest.compactName(), left + 20, top, 0xffffff);
+                font.draw(poseStack, "Diff: " + quest.difficulty(), left + entryWidth - 32, top, 0xffffff);
 
-                    List<FormattedCharSequence> seq = quest.compactDesc().stream().map(Component::getVisualOrderText).toList();
-                    for (int i = 0; i < seq.size();i++) {
-                        FormattedCharSequence formattedCharSequence = seq.get(i);
-                        font.draw(poseStack,formattedCharSequence,left + 1,top + 18 + 10 * i,0xffffff);
-                    }
+                List<FormattedCharSequence> seq = quest.compactDesc().stream().map(Component::getVisualOrderText).toList();
+                for (int i = 0; i < seq.size(); i++) {
+                    FormattedCharSequence formattedCharSequence = seq.get(i);
+                    font.draw(poseStack, formattedCharSequence, left + 1, top + 18 + 10 * i, 0xffffff);
+                }
 
-                    //TownCampfireScreen.this.setToolTip(seq);
+                //TownCampfireScreen.this.setToolTip(seq);
 
                 //    font.draw(poseStack, Language.getInstance().getVisualOrder(FormattedText.composite(font.substrByWidth(name,
                 //    listWidth))), left + 3, top + 2, 0xFFFFFF);
@@ -908,7 +1148,7 @@ public class TownCampfireScreen extends BasicScreen {
                         startQuest.active = true;
                         startQuest.setMessage(TextComponents.START_QUEST);
                     }
-                    case IN_PROGRESS,COMPLETE -> {
+                    case IN_PROGRESS, COMPLETE -> {
                         finishQuest.visible = true;
                         info.visible = true;
                         finishQuest.active = status == QuestInstance.Status.COMPLETE;
@@ -937,7 +1177,7 @@ public class TownCampfireScreen extends BasicScreen {
         public void refreshList() {
             temp = getSelected() != null ? getSelected().questInstance : null;
             this.clearEntries();
-            for (QuestInstance questInstance : TownCampfiresClient.currentQuests){
+            for (QuestInstance questInstance : TownCampfiresClient.currentQuests) {
                 ActiveQuestEntry questEntry = new ActiveQuestEntry(questInstance);
                 addEntry(questEntry);
                 if (temp != null && questInstance.questID().equals(temp.questID())) {
@@ -950,7 +1190,7 @@ public class TownCampfireScreen extends BasicScreen {
         public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
             if (visible) {
                 //left,bottom,right,top
-                GuiComponent.enableScissor(x0,y0,x1+10,y1);
+                GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
                 super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
                 GuiComponent.disableScissor();
             }
@@ -986,16 +1226,15 @@ public class TownCampfireScreen extends BasicScreen {
 
             @Override
             public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
-                               int mouseX, int mouseY, boolean isMouseOver, float partialTick)
-            {
+                               int mouseX, int mouseY, boolean isMouseOver, float partialTick) {
                 Font font = TownCampfireScreen.this.font;
-                itemRenderer.renderAndDecorateFakeItem(questInstance.quest().icon(),left,top);
-                font.draw(poseStack, questInstance.quest().name(),left+20,top,0xffffff);
+                itemRenderer.renderAndDecorateFakeItem(questInstance.quest().icon(), left, top);
+                font.draw(poseStack, questInstance.quest().name(), left + 20, top, 0xffffff);
 
                 List<FormattedCharSequence> seq = questInstance.quest().desc().stream().map(Component::getVisualOrderText).toList();
-                for (int i = 0; i < seq.size();i++) {
+                for (int i = 0; i < seq.size(); i++) {
                     FormattedCharSequence formattedCharSequence = seq.get(i);
-                    font.draw(poseStack,formattedCharSequence,left + 1,top + 18 + 10 * i,0xffffff);
+                    font.draw(poseStack, formattedCharSequence, left + 1, top + 18 + 10 * i, 0xffffff);
                 }
 
                 //TownCampfireScreen.this.setToolTip(seq);

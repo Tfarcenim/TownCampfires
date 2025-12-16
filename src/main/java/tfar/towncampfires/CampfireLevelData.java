@@ -19,6 +19,7 @@ import tfar.towncampfires.data.quest.criteria.FailureCriteria;
 import tfar.towncampfires.network.ForgePacketHandler;
 import tfar.towncampfires.network.client.S2CQuestAttemptPacket;
 import tfar.towncampfires.network.client.S2CQuestInstancePacket;
+import tfar.towncampfires.network.client.S2CTeleportsPacket;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -82,6 +83,13 @@ public class CampfireLevelData extends SavedData {
     public void markVisit(ServerPlayer player, TownCampfire campfire) {
         lastVisited.put(player.getUUID(), campfire);
         setDirty();
+    }
+
+    public void sendTeleportInfo(ServerPlayer player) {
+        List<TownCampfire> campfires = new ArrayList<>();
+        campfiresByIndex.forEach(campfire -> campfires.add(campfire));
+        ForgePacketHandler.sendToClient(new S2CTeleportsPacket(campfires), player);
+
     }
 
     public void addDeferredPunishment(ResourceLocation questID, UUID uuid) {

@@ -1,13 +1,20 @@
 package tfar.towncampfires.client;
 
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.multiplayer.ServerData;
+import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.client.server.IntegratedServer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.level.storage.LevelStorageSource;
 import net.minecraftforge.client.event.RegisterGuiOverlaysEvent;
 import net.minecraftforge.client.gui.overlay.IGuiOverlay;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -23,10 +30,8 @@ import tfar.towncampfires.init.ModBlocks;
 import tfar.towncampfires.network.client.S2CQuestAttemptPacket;
 import tfar.towncampfires.network.client.S2CQuestPacket;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.nio.file.Path;
+import java.util.*;
 
 public class TownCampfiresClient {
 
@@ -102,6 +107,13 @@ public class TownCampfiresClient {
         }
     }
 
+    public static void handleSyncTeleports(List<TownCampfire> campfires) {
+        Screen screen = Minecraft.getInstance().screen;
+        if (screen instanceof TownCampfireScreen townCampfireScreen) {
+            townCampfireScreen.setTeleports(campfires);
+        }
+    }
+
     static IGuiOverlay overlay = (gui, poseStack, partialTick, screenWidth, screenHeight) -> {
         int startY = 10;
         Font font = gui.getFont();
@@ -138,5 +150,45 @@ public class TownCampfiresClient {
 
     public static void handle(S2CQuestAttemptPacket s2CQuestAttemptPacket) {
         attempts = s2CQuestAttemptPacket.attempts();
+    }
+
+    public static Optional<Path> getPreviewFile(LevelStorageSource.LevelStorageAccess access) {
+        return Optional.of(access.getWorldDir().resolve("preview.png"));
+    }
+
+    static void takeCampfireScreenshot(Minecraft minecraft, BlockPos location) {
+        String name = getScreenshotName(minecraft,location);
+        Screenshot.grab(minecraft.gameDirectory, name, minecraft.getMainRenderTarget(), component -> minecraft.execute(() -> {
+                    //minecraft.gui.getChat().addMessage(component);
+                }));
+    }
+
+    public static String getScreenshotName(Minecraft minecraft,BlockPos pos){
+        String levelName = getLevelName(minecraft);
+        return levelName+pos.getX()+"x"+pos.getZ()+"z.png";
+    }
+
+    static long lastAttempt;
+
+    public static void takeCampfireScreenshotIfNeeded(GameRenderer renderer) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen instanceof TownCampfireScreen screen && screen.townCampfire != null) {
+            if (Util.getMillis() - lastAttempt > 10000L) {
+                //only works on dedicated servers
+                ServerData currentServer = minecraft.getCurrentServer();
+                takeCampfireScreenshot(minecraft,screen.townCampfire.location());
+                lastAttempt = Util.getMillis();
+            }
+        }
+    }
+
+    static String getLevelName(Minecraft minecraft) {
+        ServerData serverData = minecraft.getCurrentServer();
+        if (serverData != null) {
+            return serverData.name;
+        } else {
+            IntegratedServer integratedServer = minecraft.getSingleplayerServer();
+            return integratedServer.getMotd();
+        }
     }
 }

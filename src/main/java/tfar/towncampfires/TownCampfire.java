@@ -92,6 +92,14 @@ public final class TownCampfire {
         return townCampfire;
     }
 
+    public TownCampfire constructForTeleport(ServerPlayer player, CampfireLevelData campfireLevelData) {
+
+        TownCampfire townCampfire = new TownCampfire(location,name,experience,usedBlocks,usedWorkbenches,new ArrayList<>(), maxQuests);
+
+        return townCampfire;
+    }
+
+
     public static TownCampfire load(CompoundTag tag,CampfireLevelData data) {
         TownCampfire townCampfire = TownCampfire.CODEC
                 .parse(new Dynamic<>(NbtOps.INSTANCE, tag)).resultOrPartial(TownCampfires.LOGGER::error).orElseThrow();

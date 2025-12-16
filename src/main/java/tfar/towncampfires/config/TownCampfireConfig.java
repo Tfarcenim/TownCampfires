@@ -45,6 +45,13 @@ public class TownCampfireConfig {
         public final ForgeConfigSpec.IntValue slots_per_player;
         public final ForgeConfigSpec.IntValue trade_tab_level_requirement;
 
+        public final ForgeConfigSpec.EnumValue<TeleportType> teleport_requirement;
+        public final ForgeConfigSpec.ConfigValue<? extends String> teleport_item;
+        public final ForgeConfigSpec.IntValue teleport_distance_per_item_cost;
+        public final ForgeConfigSpec.IntValue teleport_minimum_cost;
+        public final ForgeConfigSpec.IntValue teleport_maximum_cost;
+        public final ForgeConfigSpec.IntValue unteleportable_distance;
+
         public Server(ForgeConfigSpec.Builder builder) {
             builder.push("town_campfire_stats");
             defaultNames = ConfigHelper.defineObject(builder,"default_campfire_names", MiscCodecs.COMPONENT_CODEC.listOf(),defaultCampfireNames());
@@ -73,8 +80,29 @@ public class TownCampfireConfig {
                     List.of(new RandomIntegerRange(0,0,0)));
 
             starting_quests = ConfigHelper.defineObject(builder,"starting_quests",IntegerRange.CODEC,new IntegerRange(1,5));
-
             trade_tab_level_requirement = builder.defineInRange("trade_tab_level_requirement",0,0,10000000);
+
+            builder.pop();
+
+            builder.push("teleport_requirements");
+            teleport_requirement = builder.defineEnum("requires",TeleportType.EXPERIENCE);
+            teleport_item = builder.define("item","minecraft:ender_pearl");
+            teleport_distance_per_item_cost = builder.defineInRange("distance_per_item_cost",100,1,100000000);
+
+            teleport_minimum_cost = builder.defineInRange("minimum_cost",100,1,100000000);
+            teleport_maximum_cost = builder.defineInRange("maximum_cost",100,1,100000000);
+
+            unteleportable_distance = builder.defineInRange("unteleportable_distance",1000000,1,100_000_000);
+
+            //Added Campfire Type Multiplier: if the campfire type is different, add this cost to the math formula [static number]
+            // Added Dimension Cost: added cost if the user is outside of the dimension they're teleporting to [dimension, multiplier]
+            // Distance Multiplier 1: if current blocks surpass this number, add distance multiplier 1 instead of distance per item cost [blocks]
+            //Cost Distance Multiplier 1: the cost of the teleport will be determined by by this number if distance multiplier 1 conditions are met. [new distance cost]
+            //Distance Multiplier 2: if the current blocks surpass this number, add distance multiplier 2 instead of distance multiplier 1 and cost distance multiplier 1 [blocks]
+            // Cost Distance Multiplier 2: the cost of the teleport will be determined by by this number if distance multiplier 2 conditions are met. [new distance cost]
+            // Distance Multiplier 3: if the current blocks surpass this number, add distance multiplier 3 instead of the other distance multipliers.[blocks]
+            // Cost Distance Multiplier 3: the cost of the teleport will be determined by by this number if distance multiplier 3 conditions are met.[new distance cost]
+            // Unteleportable Distance: if the blocks exceed this distance, grey out the option of the teleport and disable it. [blocks]
 
             builder.pop();
             builder.pop();
