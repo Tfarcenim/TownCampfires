@@ -28,12 +28,12 @@ public class ModCommands {
                         )
                 )
                 .then(Commands.literal("reset").requires(sourceStack -> sourceStack.hasPermission(Commands.LEVEL_ADMINS))
-                                .executes(ModCommands::reset)
+                                .executes(ModCommands::resetAll)
                         )
         );
     }
 
-    private static int reset(CommandContext<CommandSourceStack> context) {
+    private static int resetAll(CommandContext<CommandSourceStack> context) {
         CommandSourceStack source = context.getSource();
         ServerLevel level = source.getLevel();
         MinecraftServer server = source.getServer();

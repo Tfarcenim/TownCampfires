@@ -18,6 +18,10 @@ public class PacketHandler {
         ForgePacketHandler.registerClientPacket(S2CQuestPacket.class, S2CQuestPacket::new);
         ForgePacketHandler.registerClientPacket(S2CQuestAttemptPacket.class, S2CQuestAttemptPacket::new);
 
+        ForgePacketHandler.registerClientPacket(S2CAddQuestLogPacket.class, S2CAddQuestLogPacket::new);
+        ForgePacketHandler.registerClientPacket(S2CFillQuestLogPacket.class, S2CFillQuestLogPacket::new);
+        ForgePacketHandler.registerClientPacket(S2CClearQuestLogPacket.class, S2CClearQuestLogPacket::fromPacket);
+
         ForgePacketHandler.registerClientPacket(S2CQuestInstancePacket.class, S2CQuestInstancePacket::new);
         ForgePacketHandler.registerClientPacket(S2CTeleportsPacket.class, S2CTeleportsPacket::fromPacket);
 

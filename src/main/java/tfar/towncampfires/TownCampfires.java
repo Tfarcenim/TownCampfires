@@ -92,6 +92,7 @@ public class TownCampfires
         if (FMLEnvironment.dist.isClient()) {
             TownCampfiresClient.init(bus);
         }
+        QuestLogger.init();
         registerAll(ModBlocks.class,Registry.BLOCK, Block.class);
         registerAll(ModItems.class,Registry.ITEM, Item.class);
         registerAll(ModBlockEntities.class,Registry.BLOCK_ENTITY_TYPE,(Class<BlockEntityType<?>>)(Object)BlockEntityType.class);

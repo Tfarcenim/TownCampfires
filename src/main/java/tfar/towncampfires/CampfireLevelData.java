@@ -5,6 +5,7 @@ import net.minecraft.advancements.critereon.AbstractCriterionTriggerInstance;
 import net.minecraft.advancements.critereon.SimpleCriterionTrigger;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.*;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -17,6 +18,7 @@ import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.data.quest.criteria.FailureCriteria;
 import tfar.towncampfires.network.ForgePacketHandler;
+import tfar.towncampfires.network.client.S2CClearQuestLogPacket;
 import tfar.towncampfires.network.client.S2CQuestAttemptPacket;
 import tfar.towncampfires.network.client.S2CQuestInstancePacket;
 import tfar.towncampfires.network.client.S2CTeleportsPacket;
@@ -42,6 +44,8 @@ public class CampfireLevelData extends SavedData {
     private Map<ResourceLocation, Set<UUID>> deferredRewards = new HashMap<>();
 
     private Map<UUID, Map<ResourceLocation, Integer>> totalAttempts = new HashMap<>();
+
+    private List<Component> log = new ArrayList<>();
 
     public CampfireLevelData(ServerLevel pLevel) {
         this.level = pLevel;
@@ -363,6 +367,8 @@ public class CampfireLevelData extends SavedData {
                     currentQuests.remove(existing);
                 }
 
+                Component log = QuestLogger.questComplete(player.getName(),quest.name());
+                QuestLogger.log(player.server,log);
                 markQuestCompleted(player, questID);
                 sendDataTo(player);
                 setDirty();
@@ -371,8 +377,7 @@ public class CampfireLevelData extends SavedData {
     }
 
     public void markQuestCompleted(ServerPlayer player, ResourceLocation questID) {
-        Set<ResourceLocation> set = completedQuests.computeIfAbsent(player.getUUID(), k -> new HashSet<>());
-        set.add(questID);
+        markQuestCompleted(player.getUUID(),questID);
     }
 
     public void markQuestCompleted(UUID uuid, ResourceLocation questID) {
@@ -565,7 +570,10 @@ public class CampfireLevelData extends SavedData {
         currentQuests.clear();
         totalAttempts.clear();
         completedQuests.clear();
-        level.getServer().getPlayerList().getPlayers().forEach(this::sendDataTo);
+        level.getServer().getPlayerList().getPlayers().forEach(player -> {
+            new S2CClearQuestLogPacket().send(level.getServer());
+            sendDataTo(player);
+        });
         setDirty();
     }
 

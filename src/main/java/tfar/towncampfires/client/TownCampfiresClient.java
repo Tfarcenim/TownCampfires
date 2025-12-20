@@ -27,6 +27,7 @@ import tfar.towncampfires.data.quest.QuestCriteria;
 import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.data.quest.QuestLoader;
 import tfar.towncampfires.init.ModBlocks;
+import tfar.towncampfires.network.client.S2CClearQuestLogPacket;
 import tfar.towncampfires.network.client.S2CQuestAttemptPacket;
 import tfar.towncampfires.network.client.S2CQuestPacket;
 
@@ -43,6 +44,8 @@ public class TownCampfiresClient {
     static List<QuestInstance> currentQuests = new ArrayList<>();
 
     static Map<ResourceLocation,Integer> attempts;
+
+    public static List<Component> logs = new ArrayList<>();
 
     public static void init(IEventBus bus) {
         bus.addListener(TownCampfiresClient::setup);
@@ -190,5 +193,17 @@ public class TownCampfiresClient {
             IntegratedServer integratedServer = minecraft.getSingleplayerServer();
             return integratedServer.getMotd();
         }
+    }
+
+    public static void addLog(Component message) {
+        logs.add(message);
+    }
+
+    public static void setLogs(List<Component> messages) {
+        logs = messages;
+    }
+
+    public static void handle(S2CClearQuestLogPacket s2CClearQuestLogPacket) {
+        logs.clear();
     }
 }

@@ -1,6 +1,7 @@
 package tfar.towncampfires.datagen;
 
 import net.minecraft.data.DataGenerator;
+import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.contents.TranslatableContents;
@@ -10,6 +11,7 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.block.Block;
 import net.minecraftforge.common.data.LanguageProvider;
 import org.codehaus.plexus.util.StringUtils;
+import tfar.towncampfires.QuestLogger;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.init.ModItems;
 
@@ -23,6 +25,7 @@ public class ModLangProvider extends LanguageProvider {
     @Override
     protected void addTranslations() {
         addDefaultItem(() -> ModItems.TOWN_CAMPFIRE_EXPERIENCE);
+        addTextComponent(QuestLogger.questComplete(Component.empty(),Component.empty()),"%s has completed %s at %s");
     }
 
     protected void addDefaultItem(Supplier<? extends Item> supplier) {

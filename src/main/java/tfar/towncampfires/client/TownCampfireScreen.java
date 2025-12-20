@@ -50,6 +50,7 @@ public class TownCampfireScreen extends BasicScreen {
 
     protected EditBox name;
     protected EditBox teleportSearch;
+    protected EditBox logSearch;
     @Nullable
     private List<FormattedCharSequence> toolTip;
 
@@ -89,6 +90,7 @@ public class TownCampfireScreen extends BasicScreen {
     protected QuestWidget questWidget;
     protected ActiveQuestWidget activeQuestWidget;
     protected TeleportWidget teleportWidget;
+    protected LogWidget logWidget;
 
     protected Button startQuest;
 
@@ -99,6 +101,9 @@ public class TownCampfireScreen extends BasicScreen {
     protected Button deliver;
 
     protected Button teleport;
+
+    protected Button teleportFilter;
+    protected Button logFilter;
 
     protected TownCampfireScreen(Component pTitle) {
         super(pTitle);
@@ -148,6 +153,13 @@ public class TownCampfireScreen extends BasicScreen {
         //campfireEffectWidget.setRenderBackground(false);
         this.addRenderableWidget(teleportWidget);
 
+        //
+        logWidget = new LogWidget(minecraft, questWidth, questHeight, topPos + TAB_HEIGHT + 20, topPos + questHeight - 10, 50);
+        teleportWidget.setLeftPos(leftPos + 5);
+        teleportWidget.setRenderTopAndBottom(false);
+        teleportWidget.setRenderBackground(false);
+        this.addRenderableWidget(teleportWidget);
+        ////
 
         info = new Button(leftPos + imageWidth / 2 + 80, topPos + imageHeight - 25, 50, 20, Component.literal("Info"), b -> moreInfo());
         addRenderableWidget(info);
@@ -187,7 +199,23 @@ public class TownCampfireScreen extends BasicScreen {
         teleport = new Button(leftPos + imageWidth / 2 + 16, topPos + imageHeight - 25, 60, 20, Component.literal("Teleport"), b -> pressTeleport());
         addRenderableWidget(teleport);
 
+        String s = "F";
+
+        teleportFilter = new Button(leftPos + 10 + teleportSearch.getWidth(), topPos + TAB_HEIGHT + 4, 18, 16, Component.literal(s), b -> openTeleportFilter());
+        addRenderableWidget(teleportFilter);
+
+        logFilter = new Button(leftPos + 10 + logSearch.getWidth(), topPos + TAB_HEIGHT + 4, 18, 16,Component.literal(s), b -> openLogFilter());
+        addRenderableWidget(logFilter);
+
         switchToTab(current);
+    }
+
+    void openTeleportFilter() {
+
+    }
+
+    void openLogFilter() {
+
     }
 
     void pressTeleport() {
@@ -305,8 +333,17 @@ public class TownCampfireScreen extends BasicScreen {
         this.teleportSearch.setTextColorUneditable(0xeeeeee);
         //this.teleportSearch.setBordered(false);
         this.teleportSearch.setMaxLength(40);
-        this.teleportSearch.setResponder(this::updateSearch);
+        this.teleportSearch.setResponder(this::updateTeleportSearch);
         this.addWidget(this.teleportSearch);
+
+        this.logSearch = new EditBox(this.font, leftPos + 8, topPos + TAB_HEIGHT + 6, nameWidth, 12,
+                Component.translatable("towncampfires.container.name"));
+        this.logSearch.setTextColor(0xeeeeee);
+        this.logSearch.setTextColorUneditable(0xeeeeee);
+        //this.teleportSearch.setBordered(false);
+        this.logSearch.setMaxLength(40);
+        this.logSearch.setResponder(this::updateLogSearch);
+        this.addWidget(this.logSearch);
 
         teleportWidget.refresh();
     }
@@ -317,7 +354,11 @@ public class TownCampfireScreen extends BasicScreen {
         }
     }
 
-    private void updateSearch(String s) {
+    private void updateTeleportSearch(String s) {
+        teleportWidget.update(s);
+    }
+
+    private void updateLogSearch(String s) {
         teleportWidget.update(s);
     }
 
@@ -539,8 +580,9 @@ public class TownCampfireScreen extends BasicScreen {
                     int screenH = 96;
                     GuiComponent.blit(pPoseStack, startX, topPos + TAB_HEIGHT + 6, 0.0F, 0.0F, screenW, screenH, screenW, screenH);
                     RenderSystem.disableBlend();
-
                 }
+            } case logs -> {
+
             }
         }
 
@@ -615,12 +657,20 @@ public class TownCampfireScreen extends BasicScreen {
         boolean mainTab = tab == Tab.status;
         name.setEditable(mainTab);
         name.setVisible(mainTab);
-
+////////
         boolean teleportTab = tab == Tab.teleport;
         teleportSearch.setEditable(teleportTab);
         teleportSearch.setVisible(teleportTab);
         teleportWidget.setVisible(teleportTab);
         teleport.visible = teleportTab;
+        teleportFilter.visible = teleportTab;
+////////
+        boolean logTab = tab == Tab.logs;
+        logWidget.setVisible(logTab);
+        logSearch.setEditable(logTab);
+        logSearch.setVisible(logTab);
+        logFilter.visible = logTab;
+
 
         home.visible = bed.visible = gear.visible = mainTab;
         campfireEffectWidget.setVisible(mainTab);
@@ -890,7 +940,13 @@ public class TownCampfireScreen extends BasicScreen {
 
         void update(String s) {
             this.clearEntries();
-            teleports.forEach(townCampfire -> addEntry(new TeleportEntry(townCampfire)));
+            setScrollAmount(0);
+            teleports.forEach(townCampfire -> {
+                String name = townCampfire.name().getString();
+                if (name.contains(s)) {
+                    addEntry(new TeleportEntry(townCampfire));
+                }
+            });
         }
 
         @Override
@@ -1010,12 +1066,93 @@ public class TownCampfireScreen extends BasicScreen {
         }
     }
 
+    protected class LogWidget extends ObjectSelectionList<LogWidget.LogEntry> {
+
+        boolean visible;
+
+        public LogWidget(Minecraft pMinecraft, int pWidth, int pHeight, int pY0, int pY1, int pItemHeight) {
+            super(pMinecraft, pWidth, pHeight, pY0, pY1, pItemHeight);
+        }
+
+        @Override
+        public int getRowWidth() {
+            return width;
+        }
+
+        public void setVisible(boolean visible) {
+            this.visible = visible;
+        }
+
+        public void refresh() {
+            update(logSearch.getValue());
+        }
+
+        void update(String s) {
+            this.clearEntries();
+            setScrollAmount(0);
+            TownCampfiresClient.logs.forEach(component -> {
+                String name = component.getString();
+                if (name.contains(s)) {
+                    addEntry(new LogEntry(component));
+                }
+            });
+        }
+
+        @Override
+        public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
+            if (visible) {
+                //left,bottom,right,top
+                GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
+                super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+                GuiComponent.disableScissor();
+            }
+        }
+
+        @Override
+        public void setSelected(@Nullable LogEntry pSelected) {
+            super.setSelected(pSelected);
+        }
+
+        @Override
+        protected int getScrollbarPosition() {
+            return x1;
+        }
+
+        public class LogEntry extends ObjectSelectionList.Entry<LogEntry> {
+            private final Component log;
+
+            LogEntry(Component log) {
+                this.log = log;
+            }
+
+
+            @Override
+            public Component getNarration() {
+                return Component.translatable("narrator.select", log);
+            }
+
+            @Override
+            public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
+                               int mouseX, int mouseY, boolean isMouseOver, float partialTick) {
+                Font font = TownCampfireScreen.this.font;
+                font.draw(poseStack, log, left, top, DARK_GRAY);
+            }
+
+            @Override
+            public boolean mouseClicked(double pMouseX, double pMouseY, int pButton) {
+                setSelected(this);
+                return true;
+            }
+        }
+    }
+
     @Override
     public void removed() {
         if (this.teleportWidget != null) {
             this.teleportWidget.children().forEach(TeleportWidget.TeleportEntry::close);
         }
     }
+
 
 
     protected class QuestWidget extends ObjectSelectionList<QuestWidget.QuestEntry> {
@@ -1148,11 +1285,17 @@ public class TownCampfireScreen extends BasicScreen {
                         startQuest.active = true;
                         startQuest.setMessage(TextComponents.START_QUEST);
                     }
-                    case IN_PROGRESS, COMPLETE -> {
+                    case IN_PROGRESS -> {
                         finishQuest.visible = true;
                         info.visible = true;
-                        finishQuest.active = status == QuestInstance.Status.COMPLETE;
+                        finishQuest.active = true;
                         deliver.visible = true;
+                    }
+                    case COMPLETE -> {
+                        finishQuest.visible = true;
+                        info.visible = true;
+                        finishQuest.active = false;
+                        deliver.visible = false;
                     }
                 }
             }

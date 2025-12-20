@@ -1,3 +1,4 @@
 {
-  "item.towncampfires.town_campfire_experience": "Town Campfire Experience"
+  "item.towncampfires.town_campfire_experience": "Town Campfire Experience",
+  "log.towncampfires.quest_complete": "%s has completed %s at %s"
 }
