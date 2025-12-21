@@ -18,10 +18,7 @@ import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.data.quest.criteria.FailureCriteria;
 import tfar.towncampfires.network.ForgePacketHandler;
-import tfar.towncampfires.network.client.S2CClearQuestLogPacket;
-import tfar.towncampfires.network.client.S2CQuestAttemptPacket;
-import tfar.towncampfires.network.client.S2CQuestInstancePacket;
-import tfar.towncampfires.network.client.S2CTeleportsPacket;
+import tfar.towncampfires.network.client.*;
 
 import java.util.*;
 import java.util.function.Predicate;
@@ -45,7 +42,7 @@ public class CampfireLevelData extends SavedData {
 
     private Map<UUID, Map<ResourceLocation, Integer>> totalAttempts = new HashMap<>();
 
-    private List<Component> log = new ArrayList<>();
+    private List<Component> logs = new ArrayList<>();
 
     public CampfireLevelData(ServerLevel pLevel) {
         this.level = pLevel;
@@ -112,6 +109,7 @@ public class CampfireLevelData extends SavedData {
         var map = totalAttempts.getOrDefault(player.getUUID(), Map.of());
         ForgePacketHandler.sendToClient(new S2CQuestAttemptPacket(map), player);
         ForgePacketHandler.sendToClient(new S2CQuestInstancePacket(questInstances), player);
+        ForgePacketHandler.sendToClient(new S2CFillQuestLogPacket(logs),player);
     }
 
     public void checkDeathCriteria(ServerPlayer player) {
@@ -368,12 +366,16 @@ public class CampfireLevelData extends SavedData {
                 }
 
                 Component log = QuestLogger.questComplete(player.getName(),quest.name());
-                QuestLogger.log(player.server,log);
+                log(log);
                 markQuestCompleted(player, questID);
                 sendDataTo(player);
                 setDirty();
             }
         }
+    }
+
+    public void log(Component log) {
+        logs.add(log);
     }
 
     public void markQuestCompleted(ServerPlayer player, ResourceLocation questID) {
@@ -454,6 +456,11 @@ public class CampfireLevelData extends SavedData {
             completedQuests.put(UUID.fromString(key), set);
         }
 
+        ListTag logList = compoundTag.getList("logs",Tag.TAG_STRING);
+        for (Tag t : logList) {
+            logs.add(Component.Serializer.fromJson(t.getAsString()));
+        }
+
 
         loadAttemptsTag(compoundTag);
 
@@ -520,6 +527,13 @@ public class CampfireLevelData extends SavedData {
             }
             deferredPunishmentsTag.put(entry.getKey().toString(), listTag1);
         }
+
+        ListTag listTag = new ListTag();
+        for (Component component : logs) {
+            listTag.add(StringTag.valueOf(Component.Serializer.toJson(component)));
+        }
+
+        pCompoundTag.put("logs",listTag);
 
         saveAttemptsTag(pCompoundTag);
 

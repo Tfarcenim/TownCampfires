@@ -201,6 +201,10 @@ public class TownCampfiresClient {
 
     public static void setLogs(List<Component> messages) {
         logs = messages;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.screen instanceof TownCampfireScreen screen) {
+            screen.logWidget.refresh();
+        }
     }
 
     public static void handle(S2CClearQuestLogPacket s2CClearQuestLogPacket) {

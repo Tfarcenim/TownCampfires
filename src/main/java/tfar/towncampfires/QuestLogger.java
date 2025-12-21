@@ -6,8 +6,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.server.MinecraftServer;
 import org.slf4j.Logger;
-import tfar.towncampfires.network.ForgePacketHandler;
-import tfar.towncampfires.network.client.S2CAddQuestLogPacket;
 
 import java.time.Instant;
 import java.util.Date;
@@ -17,7 +15,7 @@ public class QuestLogger {
     private static final Logger LOGGER = LogUtils.getLogger();
 
     public static void log(MinecraftServer server,Component component) {
-        ForgePacketHandler.sendToAll(new S2CAddQuestLogPacket(component));
+       // ForgePacketHandler.sendToAll(new S2CAddQuestLogPacket(component));
     }
 
     public static void init() {

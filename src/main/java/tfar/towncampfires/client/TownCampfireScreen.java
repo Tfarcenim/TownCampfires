@@ -155,10 +155,10 @@ public class TownCampfireScreen extends BasicScreen {
 
         //
         logWidget = new LogWidget(minecraft, questWidth, questHeight, topPos + TAB_HEIGHT + 20, topPos + questHeight - 10, 50);
-        teleportWidget.setLeftPos(leftPos + 5);
-        teleportWidget.setRenderTopAndBottom(false);
-        teleportWidget.setRenderBackground(false);
-        this.addRenderableWidget(teleportWidget);
+        logWidget.setLeftPos(leftPos + 5);
+        logWidget.setRenderTopAndBottom(false);
+        logWidget.setRenderBackground(false);
+        this.addRenderableWidget(logWidget);
         ////
 
         info = new Button(leftPos + imageWidth / 2 + 80, topPos + imageHeight - 25, 50, 20, Component.literal("Info"), b -> moreInfo());
@@ -346,6 +346,7 @@ public class TownCampfireScreen extends BasicScreen {
         this.addWidget(this.logSearch);
 
         teleportWidget.refresh();
+        logWidget.refresh();
     }
 
     private void onNameChanged(String string) {
@@ -359,7 +360,7 @@ public class TownCampfireScreen extends BasicScreen {
     }
 
     private void updateLogSearch(String s) {
-        teleportWidget.update(s);
+        logWidget.update(s);
     }
 
     @Override
@@ -390,6 +391,7 @@ public class TownCampfireScreen extends BasicScreen {
         super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
         this.name.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
         this.teleportSearch.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
+        this.logSearch.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
 
 
         if (townCampfire == null) return;
@@ -960,6 +962,11 @@ public class TownCampfireScreen extends BasicScreen {
         }
 
         @Override
+        public boolean isMouseOver(double pMouseX, double pMouseY) {
+            return visible && super.isMouseOver(pMouseX, pMouseY);
+        }
+
+        @Override
         public void setSelected(@Nullable TownCampfireScreen.TeleportWidget.TeleportEntry pSelected) {
             super.setSelected(pSelected);
             teleport.active = pSelected != null && Math.sqrt(pSelected.campfire.location().distSqr(townCampfire.location())) <= TownCampfireConfig.CONFIG.unteleportable_distance.get();
@@ -1102,9 +1109,9 @@ public class TownCampfireScreen extends BasicScreen {
         public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
             if (visible) {
                 //left,bottom,right,top
-                GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
+          //      GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
                 super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
-                GuiComponent.disableScissor();
+           //     GuiComponent.disableScissor();
             }
         }
 
@@ -1114,17 +1121,22 @@ public class TownCampfireScreen extends BasicScreen {
         }
 
         @Override
+        public boolean isMouseOver(double pMouseX, double pMouseY) {
+            return visible && super.isMouseOver(pMouseX, pMouseY);
+        }
+
+        @Override
         protected int getScrollbarPosition() {
             return x1;
         }
 
         public class LogEntry extends ObjectSelectionList.Entry<LogEntry> {
             private final Component log;
-
+            private final List<FormattedCharSequence> split;
             LogEntry(Component log) {
                 this.log = log;
+                split = font.split(log, width);
             }
-
 
             @Override
             public Component getNarration() {
@@ -1135,7 +1147,10 @@ public class TownCampfireScreen extends BasicScreen {
             public void render(PoseStack poseStack, int entryIdx, int top, int left, int entryWidth, int entryHeight,
                                int mouseX, int mouseY, boolean isMouseOver, float partialTick) {
                 Font font = TownCampfireScreen.this.font;
-                font.draw(poseStack, log, left, top, DARK_GRAY);
+                for (int i = 0; i < split.size();i++) {
+                    FormattedCharSequence c = split.get(i);
+                    font.draw(poseStack, c, left, top+i * font.lineHeight, DARK_GRAY);
+                }
             }
 
             @Override
@@ -1288,13 +1303,13 @@ public class TownCampfireScreen extends BasicScreen {
                     case IN_PROGRESS -> {
                         finishQuest.visible = true;
                         info.visible = true;
-                        finishQuest.active = true;
+                        finishQuest.active = false;
                         deliver.visible = true;
                     }
                     case COMPLETE -> {
                         finishQuest.visible = true;
                         info.visible = true;
-                        finishQuest.active = false;
+                        finishQuest.active = true;
                         deliver.visible = false;
                     }
                 }
