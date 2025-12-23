@@ -14,6 +14,7 @@ import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.level.saveddata.SavedData;
 import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.config.TownCampfireConfig;
+import tfar.towncampfires.data.QuestLogEntry;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestInstance;
 import tfar.towncampfires.data.quest.criteria.FailureCriteria;
@@ -42,7 +43,7 @@ public class CampfireLevelData extends SavedData {
 
     private Map<UUID, Map<ResourceLocation, Integer>> totalAttempts = new HashMap<>();
 
-    private List<Component> logs = new ArrayList<>();
+    private List<QuestLogEntry> logs = new ArrayList<>();
 
     public CampfireLevelData(ServerLevel pLevel) {
         this.level = pLevel;
@@ -366,7 +367,7 @@ public class CampfireLevelData extends SavedData {
                 }
 
                 Component log = QuestLogger.questComplete(player.getName(),quest.name());
-                log(log);
+                log(new QuestLogEntry(log,questID));
                 markQuestCompleted(player, questID);
                 sendDataTo(player);
                 setDirty();
@@ -374,7 +375,7 @@ public class CampfireLevelData extends SavedData {
         }
     }
 
-    public void log(Component log) {
+    public void log(QuestLogEntry log) {
         logs.add(log);
     }
 
@@ -456,9 +457,9 @@ public class CampfireLevelData extends SavedData {
             completedQuests.put(UUID.fromString(key), set);
         }
 
-        ListTag logList = compoundTag.getList("logs",Tag.TAG_STRING);
+        ListTag logList = compoundTag.getList("logs",Tag.TAG_COMPOUND);
         for (Tag t : logList) {
-            logs.add(Component.Serializer.fromJson(t.getAsString()));
+            logs.add(QuestLogEntry.fromNBT((CompoundTag) t));
         }
 
 
@@ -529,8 +530,8 @@ public class CampfireLevelData extends SavedData {
         }
 
         ListTag listTag = new ListTag();
-        for (Component component : logs) {
-            listTag.add(StringTag.valueOf(Component.Serializer.toJson(component)));
+        for (QuestLogEntry component : logs) {
+            listTag.add(component.toNBT());
         }
 
         pCompoundTag.put("logs",listTag);

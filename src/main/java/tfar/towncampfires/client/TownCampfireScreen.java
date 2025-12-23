@@ -26,6 +26,7 @@ import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.data.CampfireEffect;
+import tfar.towncampfires.data.QuestLogEntry;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestCriteria;
 import tfar.towncampfires.data.quest.QuestInstance;
@@ -585,6 +586,61 @@ public class TownCampfireScreen extends BasicScreen {
                 }
             } case logs -> {
 
+                LogWidget.LogEntry questEntry = logWidget.getSelected();
+                if (questEntry != null) {
+                    Quest quest = questEntry.quest;
+                    int xStart = leftPos + imageWidth / 2;
+                    int yStart = topPos + TAB_HEIGHT + 6;
+                    itemRenderer.renderAndDecorateFakeItem(quest.icon(), xStart, yStart);
+
+                    font.draw(pPoseStack, quest.compactName(), xStart + 20, yStart, 0xffffff);
+                    font.draw(pPoseStack, "Diff: " + quest.difficulty(), xStart + imageWidth / 2 - 40, yStart, DARK_GRAY);
+
+                    List<FormattedCharSequence> seq = quest.compactDesc().stream().map(Component::getVisualOrderText).toList();
+                    for (int i = 0; i < seq.size(); i++) {
+                        FormattedCharSequence formattedCharSequence = seq.get(i);
+                        font.draw(pPoseStack, formattedCharSequence, xStart + 1, yStart + 16 + 10 * i, 0xffffff);
+                    }
+                    int completeY = 88;
+                    font.draw(pPoseStack, Component.literal("Complete Conditions"), xStart, yStart + completeY, DARK_GRAY);
+
+                    Component mp_type = Component.literal(quest.type().name());
+                    font.draw(pPoseStack, mp_type, xStart + imageWidth / 2 - 4 - font.width(mp_type), yStart + completeY, DARK_GRAY);
+
+                    Component attempts = Component.literal("Attempts:" + quest.attempts());
+                    font.draw(pPoseStack, attempts, xStart + imageWidth / 2 - 4 - font.width(attempts), yStart + completeY + 12, DARK_GRAY);
+
+                    Component slots = Component.literal("Slots:" + quest.slots());
+                    font.draw(pPoseStack, slots, xStart + imageWidth / 2 - 4 - font.width(slots), yStart + completeY + 12 * 2, DARK_GRAY);
+
+                    Component xp = Component.literal("XP:" + quest.rewards().campfireExperience());
+                    font.draw(pPoseStack, xp, xStart + imageWidth / 2 - 4 - font.width(xp), yStart + completeY + 12 * 3, DARK_GRAY);
+
+                    List<QuestCriteria<?>> criterias = quest.successCriteria().custom();
+                    for (int i = 0; i < criterias.size(); i++) {
+                        QuestCriteria<?> entry = criterias.get(i);
+                        int count = entry.count();
+                        font.draw(pPoseStack, entry.desc().copy().append(" " + count), xStart, yStart + completeY + 10 + 10 * i, 0xffffff);
+                    }
+
+                    List<Delivery> deliveries = quest.successCriteria().deliveries();
+                    for (int i = 0; i < deliveries.size(); i++) {
+                        Delivery entry = deliveries.get(i);
+                        int x0 = xStart + 40;
+                        int x1 = x0 + 18;
+                        int y0 = yStart + completeY + 12 + 18 * i;
+                        int y1 = y0 + 18;
+                        font.draw(pPoseStack, Component.literal("Deliver"), xStart, y0, DARK_GRAY);
+                        ItemStack stack = entry.ingredient().getItems()[0].copy();
+                        stack.setCount(entry.required());
+                        minecraft.getItemRenderer().renderGuiItem(stack, x0, y0);
+                        minecraft.getItemRenderer().renderGuiItemDecorations(font, stack, x0, y0);
+                        if (pMouseX > x0 && pMouseY > y0 && pMouseX < x1 && pMouseY < y1) {
+                            renderTooltip(pPoseStack, stack, pMouseX, pMouseY);
+                        }
+                    }
+                }
+
             }
         }
 
@@ -1098,7 +1154,7 @@ public class TownCampfireScreen extends BasicScreen {
             this.clearEntries();
             setScrollAmount(0);
             TownCampfiresClient.logs.forEach(component -> {
-                String name = component.getString();
+                String name = component.log().getString();
                 if (name.contains(s)) {
                     addEntry(new LogEntry(component));
                 }
@@ -1109,9 +1165,9 @@ public class TownCampfireScreen extends BasicScreen {
         public void render(PoseStack pPoseStack, int pMouseX, int pMouseY, float pPartialTick) {
             if (visible) {
                 //left,bottom,right,top
-          //      GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
+                GuiComponent.enableScissor(x0, y0, x1 + 10, y1);
                 super.render(pPoseStack, pMouseX, pMouseY, pPartialTick);
-           //     GuiComponent.disableScissor();
+                GuiComponent.disableScissor();
             }
         }
 
@@ -1131,16 +1187,16 @@ public class TownCampfireScreen extends BasicScreen {
         }
 
         public class LogEntry extends ObjectSelectionList.Entry<LogEntry> {
-            private final Component log;
             private final List<FormattedCharSequence> split;
-            LogEntry(Component log) {
-                this.log = log;
-                split = font.split(log, width);
+            private final Quest quest;
+            LogEntry(QuestLogEntry questLogEntry) {
+                this.quest = TownCampfiresClient.questLoader.getQuestMap().get(questLogEntry.questID());
+                split = font.split(questLogEntry.log(), width);
             }
 
             @Override
             public Component getNarration() {
-                return Component.translatable("narrator.select", log);
+                return Component.empty();//Component.translatable("narrator.select", log);
             }
 
             @Override

@@ -22,6 +22,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.config.TownCampfireConfig;
 import tfar.towncampfires.data.CampfireEffectLoader;
+import tfar.towncampfires.data.QuestLogEntry;
 import tfar.towncampfires.data.quest.Quest;
 import tfar.towncampfires.data.quest.QuestCriteria;
 import tfar.towncampfires.data.quest.QuestInstance;
@@ -45,7 +46,7 @@ public class TownCampfiresClient {
 
     static Map<ResourceLocation,Integer> attempts;
 
-    public static List<Component> logs = new ArrayList<>();
+    public static List<QuestLogEntry> logs = new ArrayList<>();
 
     public static void init(IEventBus bus) {
         bus.addListener(TownCampfiresClient::setup);
@@ -195,11 +196,7 @@ public class TownCampfiresClient {
         }
     }
 
-    public static void addLog(Component message) {
-        logs.add(message);
-    }
-
-    public static void setLogs(List<Component> messages) {
+    public static void setLogs(List<QuestLogEntry> messages) {
         logs = messages;
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.screen instanceof TownCampfireScreen screen) {
