@@ -10,6 +10,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,10 +21,12 @@ import net.minecraftforge.common.util.Lazy;
 import net.minecraftforge.items.IItemHandler;
 import org.jetbrains.annotations.Nullable;
 import tfar.towncampfires.CampfireLevelData;
+import tfar.towncampfires.QuestLogger;
 import tfar.towncampfires.TownCampfire;
 import tfar.towncampfires.TownCampfires;
 import tfar.towncampfires.compat.GameStagesCompat;
 import tfar.towncampfires.compat.LoadedMods;
+import tfar.towncampfires.data.QuestLogEntry;
 import tfar.towncampfires.data.quest.criteria.CriteriaType;
 import tfar.towncampfires.data.quest.criteria.Delivery;
 
@@ -321,6 +324,10 @@ public class QuestInstance {
         for (UUID member : members) {
             ServerPlayer player = server.getPlayerList().getPlayer(member);
             if (player != null) {
+
+                Component log = QuestLogger.questFailed(player.getName(),quest().name());
+                data.log(new QuestLogEntry(log,questID));
+
                 quest().punishments().punish(player, null);
                 toRemove.add(member);
             }else {

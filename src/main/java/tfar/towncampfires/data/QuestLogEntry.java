@@ -7,6 +7,10 @@ import net.minecraft.resources.ResourceLocation;
 
 public record QuestLogEntry(Component log, ResourceLocation questID) {
 
+    public QuestLogEntry(Component log) {
+        this(log,new ResourceLocation("null","null"));
+    }
+
     public static QuestLogEntry fromPacket(FriendlyByteBuf buf) {
         Component component = buf.readComponent();
         ResourceLocation id = buf.readResourceLocation();

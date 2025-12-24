@@ -26,6 +26,7 @@ public class ModLangProvider extends LanguageProvider {
     protected void addTranslations() {
         addDefaultItem(() -> ModItems.TOWN_CAMPFIRE_EXPERIENCE);
         addTextComponent(QuestLogger.questComplete(Component.empty(),Component.empty()),"%s has completed %s at %s");
+        addTextComponent(QuestLogger.questFailed(Component.empty(),Component.empty()),"%s has failed %s at %s");
     }
 
     protected void addDefaultItem(Supplier<? extends Item> supplier) {

@@ -27,4 +27,11 @@ public class QuestLogger {
         Component dateC = Component.literal(date.toString());
         return Component.translatable("log.towncampfires.quest_complete",playerName,questName,dateC);
     }
+
+    //[player name] has completed quest [quest name] at [time]
+    public static MutableComponent questFailed(Component playerName,Component questName) {
+        Date date = Date.from(Instant.now());
+        Component dateC = Component.literal(date.toString());
+        return Component.translatable("log.towncampfires.quest_failed",playerName,questName,dateC);
+    }
 }

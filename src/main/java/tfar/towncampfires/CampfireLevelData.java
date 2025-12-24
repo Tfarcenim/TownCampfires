@@ -529,6 +529,8 @@ public class CampfireLevelData extends SavedData {
             deferredPunishmentsTag.put(entry.getKey().toString(), listTag1);
         }
 
+        pCompoundTag.put("deferred_punishments",deferredPunishmentsTag);
+
         ListTag listTag = new ListTag();
         for (QuestLogEntry component : logs) {
             listTag.add(component.toNBT());

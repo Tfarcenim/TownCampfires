@@ -587,7 +587,7 @@ public class TownCampfireScreen extends BasicScreen {
             } case logs -> {
 
                 LogWidget.LogEntry questEntry = logWidget.getSelected();
-                if (questEntry != null) {
+                if (questEntry != null && questEntry.quest != null) {
                     Quest quest = questEntry.quest;
                     int xStart = leftPos + imageWidth / 2;
                     int yStart = topPos + TAB_HEIGHT + 6;
@@ -1188,7 +1188,7 @@ public class TownCampfireScreen extends BasicScreen {
 
         public class LogEntry extends ObjectSelectionList.Entry<LogEntry> {
             private final List<FormattedCharSequence> split;
-            private final Quest quest;
+            private final @Nullable Quest quest;
             LogEntry(QuestLogEntry questLogEntry) {
                 this.quest = TownCampfiresClient.questLoader.getQuestMap().get(questLogEntry.questID());
                 split = font.split(questLogEntry.log(), width);
